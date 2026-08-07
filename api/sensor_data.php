@@ -130,8 +130,12 @@ if ($alertStatus !== 'safe') {
         $stmt->execute();
         $stmt->close();
     } else {
-        // Create new alert
-        $sql = "INSERT INTO flood_alerts (sensor_id, purok_id, alert_level, water_level, message, triggered_at) VALUES (?, ?, ?, ?, ?, ?)";
+        // Create new alert with manual ID for TiDB compatibility
+        $result = $conn->query("SELECT MAX(id) as max_id FROM flood_alerts");
+        $row = $result->fetch_assoc();
+        $nextId = ($row['max_id'] ?? 0) + 1;
+        
+        $sql = "INSERT INTO flood_alerts (id, sensor_id, purok_id, alert_level, water_level, message, triggered_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
         if ($stmt === false) {
             $error = "Prepare failed: " . $conn->error . " | SQL: " . $sql;
@@ -140,7 +144,7 @@ if ($alertStatus !== 'safe') {
             echo json_encode(['status' => 'error', 'message' => 'Database prepare failed', 'debug' => $conn->error]);
             exit;
         }
-        $stmt->bind_param('iisdss', $sensor['id'], $sensor['purok_id'], $alertStatus, $waterLevel, $message, $timestamp);
+        $stmt->bind_param('iiisdss', $nextId, $sensor['id'], $sensor['purok_id'], $alertStatus, $waterLevel, $message, $timestamp);
         if (!$stmt->execute()) {
             $error = "Execute failed: " . $stmt->error;
             error_log($error);
@@ -148,7 +152,7 @@ if ($alertStatus !== 'safe') {
             echo json_encode(['status' => 'error', 'message' => 'Database execute failed', 'debug' => $stmt->error]);
             exit;
         }
-        $alertId = $stmt->insert_id;
+        $alertId = $nextId;
         $stmt->close();
 
         // Send SMS alert to affected households

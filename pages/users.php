@@ -37,10 +37,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $msg = 'error:This email is already registered.';
                 } else {
                     $hashed = password_hash($pass, PASSWORD_BCRYPT);
-                    $stmt = $conn->prepare("INSERT INTO users (first_name, last_name, email, password, role, status, created_at) VALUES (?,?,?,?,?,'approved',NOW())");
-                    $stmt->bind_param('sssss', $fname, $lname, $email, $hashed, $role);
+                    
+                    // Get next ID for TiDB compatibility
+                    $result = $conn->query("SELECT MAX(id) as max_id FROM users");
+                    $row = $result->fetch_assoc();
+                    $nextId = ($row['max_id'] ?? 0) + 1;
+                    
+                    $stmt = $conn->prepare("INSERT INTO users (id, first_name, last_name, email, password, role, status, created_at) VALUES (?,?,?,?,?,'approved',NOW())");
+                    $stmt->bind_param('issss', $nextId, $fname, $lname, $email, $hashed, $role);
                     if ($stmt->execute()) {
-                        $newId = $stmt->insert_id;
+                        $newId = $nextId;
                         logActivity($conn, $uid, 'ADD_USER', "Added user: $email as $role");
                         $msg = 'success:User added successfully.';
                     } else {

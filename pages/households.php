@@ -15,8 +15,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add')
     $members   = (int)($_POST['members_count'] ?? 1);
 
     if ($purok_id && $head) {
-        $stmt = $conn->prepare("INSERT INTO households (purok_id, head_of_household, contact_number, members_count) VALUES (?,?,?,?)");
-        $stmt->bind_param('issi', $purok_id, $head, $contact, $members);
+        // Get next ID for TiDB compatibility
+        $result = $conn->query("SELECT MAX(id) as max_id FROM households");
+        $row = $result->fetch_assoc();
+        $nextId = ($row['max_id'] ?? 0) + 1;
+        
+        $stmt = $conn->prepare("INSERT INTO households (id, purok_id, head_of_household, contact_number, members_count) VALUES (?,?,?,?,?)");
+        $stmt->bind_param('iissi', $nextId, $purok_id, $head, $contact, $members);
         $stmt->execute();
         logActivity($conn, $_SESSION['user_id'], 'ADD_HOUSEHOLD', "Added household: $head");
         $msg = 'success:Household added successfully.';

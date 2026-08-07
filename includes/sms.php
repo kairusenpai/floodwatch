@@ -182,12 +182,7 @@ function sendFloodAlertSMS($conn, $level, $water_level, $purok_ids = []) {
 
     $total   = $sent + $failed + $skipped;
     $summary = "SMS [$level] → $sent sent, $failed failed, $skipped skipped out of $total households";
-    $conn->query("INSERT INTO activity_logs (user_id, action, details, ip_address) VALUES (
-        " . (isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 'NULL') . ",
-        'SMS_ALERT',
-        '" . $conn->real_escape_string($summary) . "',
-        '" . $conn->real_escape_string($_SERVER['REMOTE_ADDR'] ?? 'system') . "'
-    )");
+    logActivity($conn, isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null, 'SMS_ALERT', $summary);
 
     return compact('sent', 'failed', 'skipped', 'total', 'log');
 }

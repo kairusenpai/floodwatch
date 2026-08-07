@@ -19,8 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $logged_by   = $_SESSION['user_id'];
 
     if ($title && $purok_id) {
-        $stmt = $conn->prepare("INSERT INTO incident_logs (alert_id, purok_id, logged_by, title, description, action_taken, severity) VALUES (?,?,?,?,?,?,?)");
-        $stmt->bind_param('iiissss', $alert_id, $purok_id, $logged_by, $title, $description, $action_taken, $severity);
+        // Get next ID for TiDB compatibility
+        $result = $conn->query("SELECT MAX(id) as max_id FROM incident_logs");
+        $row = $result->fetch_assoc();
+        $nextId = ($row['max_id'] ?? 0) + 1;
+        
+        $stmt = $conn->prepare("INSERT INTO incident_logs (id, alert_id, purok_id, logged_by, title, description, action_taken, severity) VALUES (?,?,?,?,?,?,?,?)");
+        $stmt->bind_param('iiiissss', $nextId, $alert_id, $purok_id, $logged_by, $title, $description, $action_taken, $severity);
         if ($stmt->execute()) {
             logActivity($conn, $logged_by, 'ADD_INCIDENT', "Added incident: $title");
             $msg = 'success:Incident log added successfully.';
