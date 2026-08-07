@@ -1,4 +1,4 @@
 -- Fix activity_logs table for TiDB compatibility
--- Add AUTO_INCREMENT to id column
-
-ALTER TABLE activity_logs MODIFY COLUMN id INT AUTO_INCREMENT PRIMARY KEY;
+-- TiDB doesn't allow changing PRIMARY KEY constraints
+-- Workaround: Manual ID generation in application code
+-- No database changes needed - handled in includes/config.php

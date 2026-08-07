@@ -109,9 +109,15 @@ function getCurrentUser($conn) {
 // ── Activity log helper ──────────────────────────────────────
 function logActivity($conn, $user_id, $action, $details = '') {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    $stmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, details, ip_address) VALUES (?, ?, ?, ?)");
+    
+    // Get next ID for TiDB compatibility (since AUTO_INCREMENT may not work)
+    $result = $conn->query("SELECT MAX(id) as max_id FROM activity_logs");
+    $row = $result->fetch_assoc();
+    $nextId = ($row['max_id'] ?? 0) + 1;
+    
+    $stmt = $conn->prepare("INSERT INTO activity_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)");
     if ($stmt) {
-        $stmt->bind_param('isss', $user_id, $action, $details, $ip);
+        $stmt->bind_param('issss', $nextId, $user_id, $action, $details, $ip);
         $stmt->execute();
         $stmt->close();
     }
