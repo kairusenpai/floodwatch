@@ -31,8 +31,27 @@ function redirect($path) {
 // Initialize mysqli without connecting
 $conn = mysqli_init();
 
-// Enable SSL for TiDB Cloud
-$conn->ssl_set(null, null, null, null, null);
+// Enable SSL for TiDB Cloud with CA certificate
+// Try multiple common CA certificate paths
+$ca_paths = [
+    '/etc/ssl/certs/ca-certificates.crt',  // Debian/Ubuntu
+    '/etc/ssl/certs/ca-bundle.crt',        // RHEL/CentOS
+    '/etc/pki/tls/certs/ca-bundle.crt',    // RHEL/CentOS
+    '/usr/local/ssl/cert.pem',             // Some systems
+];
+
+$ca_path = null;
+foreach ($ca_paths as $path) {
+    if (file_exists($path)) {
+        $ca_path = $path;
+        break;
+    }
+}
+
+// If no CA found, try without specific CA (may work with system defaults)
+if ($ca_path) {
+    $conn->ssl_set(null, null, $ca_path, null, null);
+}
 
 // Connect with SSL
 mysqli_real_connect($conn, DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT, MYSQLI_CLIENT_SSL);
