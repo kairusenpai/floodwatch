@@ -163,8 +163,8 @@ if ($alertStatus !== 'safe') {
     $stmt->close();
 }
 
-// Log the activity
-logActivity($conn, 0, 'SENSOR_DATA_RECEIVED', "Sensor $sensorCode: $waterLevel cm ($alertStatus)");
+// Log the activity (system activity, no user)
+logActivity($conn, null, 'SENSOR_DATA_RECEIVED', "Sensor $sensorCode: $waterLevel cm ($alertStatus)");
 
 // Return success response
 http_response_code(200);
