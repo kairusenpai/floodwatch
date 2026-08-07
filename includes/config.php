@@ -115,19 +115,23 @@ function logActivity($conn, $user_id, $action, $details = '') {
     $row = $result->fetch_assoc();
     $nextId = ($row['max_id'] ?? 0) + 1;
     
+    // Set timezone to Asia/Manila for PH time
+    date_default_timezone_set('Asia/Manila');
+    $timestamp = date('Y-m-d H:i:s');
+    
     if ($user_id === null) {
         // System activity - no user
-        $stmt = $conn->prepare("INSERT INTO activity_logs (id, user_id, action, details, ip_address) VALUES (?, NULL, ?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO activity_logs (id, user_id, action, details, ip_address, created_at) VALUES (?, NULL, ?, ?, ?, ?)");
         if ($stmt) {
-            $stmt->bind_param('isss', $nextId, $action, $details, $ip);
+            $stmt->bind_param('issss', $nextId, $action, $details, $ip, $timestamp);
             $stmt->execute();
             $stmt->close();
         }
     } else {
         // User activity
-        $stmt = $conn->prepare("INSERT INTO activity_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO activity_logs (id, user_id, action, details, ip_address, created_at) VALUES (?, ?, ?, ?, ?, ?)");
         if ($stmt) {
-            $stmt->bind_param('issss', $nextId, $user_id, $action, $details, $ip);
+            $stmt->bind_param('isssss', $nextId, $user_id, $action, $details, $ip, $timestamp);
             $stmt->execute();
             $stmt->close();
         }

@@ -23,10 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
 $sensors = $conn->query("
     SELECT s.*, p.name as purok, p.id as purok_id,
-           (SELECT COUNT(*) FROM sensor_readings WHERE sensor_id=s.id AND DATE(recorded_at) = CURDATE()) as reading_count,
-           (SELECT water_level FROM sensor_readings WHERE sensor_id=s.id AND DATE(recorded_at) = CURDATE() ORDER BY recorded_at DESC LIMIT 1) as last_level,
-           (SELECT alert_status FROM sensor_readings WHERE sensor_id=s.id AND DATE(recorded_at) = CURDATE() ORDER BY recorded_at DESC LIMIT 1) as last_status,
-           (SELECT recorded_at FROM sensor_readings WHERE sensor_id=s.id AND DATE(recorded_at) = CURDATE() ORDER BY recorded_at DESC LIMIT 1) as last_reading
+           (SELECT COUNT(*) FROM sensor_readings WHERE sensor_id=s.id) as reading_count,
+           (SELECT water_level FROM sensor_readings WHERE sensor_id=s.id ORDER BY recorded_at DESC LIMIT 1) as last_level,
+           (SELECT alert_status FROM sensor_readings WHERE sensor_id=s.id ORDER BY recorded_at DESC LIMIT 1) as last_status,
+           (SELECT recorded_at FROM sensor_readings WHERE sensor_id=s.id ORDER BY recorded_at DESC LIMIT 1) as last_reading
     FROM sensors s
     JOIN puroks p ON s.purok_id = p.id
     ORDER BY s.id

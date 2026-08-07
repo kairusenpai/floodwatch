@@ -18,16 +18,10 @@ $latestReadings = $conn->query("
     FROM sensors s
     JOIN puroks p ON s.purok_id = p.id
     LEFT JOIN (
-        SELECT sensor_id, water_level, alert_status, recorded_at
+        SELECT sensor_id, water_level, alert_status, recorded_at,
+               ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC) as rn
         FROM sensor_readings
-        WHERE (sensor_id, recorded_at) IN (
-            SELECT sensor_id, MAX(recorded_at)
-            FROM sensor_readings
-            WHERE DATE(recorded_at) = CURDATE()
-            GROUP BY sensor_id
-        )
-    ) sr ON sr.sensor_id = s.id
-    WHERE sr.recorded_at IS NULL OR DATE(sr.recorded_at) = CURDATE()
+    ) sr ON sr.sensor_id = s.id AND sr.rn = 1
     ORDER BY s.id");
 
 $recentAlerts = $conn->query("
