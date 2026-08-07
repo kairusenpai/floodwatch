@@ -29,8 +29,8 @@ header('Expires: 0');
   --warn: #ffaa00;
   --danger: #ff3355;
   --safe: #00e676;
-  --text: #c8dff0;
-  --muted: #4a6a8a;
+  --text: #fff;
+  --muted: #fff;
   --font-head: 'Syne', sans-serif;
   --font-mono: 'Space Mono', monospace;
 }
