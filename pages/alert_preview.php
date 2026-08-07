@@ -13,9 +13,15 @@ $res = $conn->query("
            sr.water_level, sr.alert_status, sr.recorded_at
     FROM sensors s
     JOIN puroks p ON s.purok_id = p.id
-    LEFT JOIN sensor_readings sr ON sr.id = (
-        SELECT id FROM sensor_readings WHERE sensor_id = s.id ORDER BY recorded_at DESC LIMIT 1
-    )
+    LEFT JOIN (
+        SELECT id, sensor_id, water_level, alert_status, recorded_at
+        FROM sensor_readings
+        WHERE (sensor_id, recorded_at) IN (
+            SELECT sensor_id, MAX(recorded_at)
+            FROM sensor_readings
+            GROUP BY sensor_id
+        )
+    ) sr ON sr.sensor_id = s.id
     ORDER BY s.id
 ");
 while ($row = $res->fetch_assoc()) $sensorReadings[] = $row;

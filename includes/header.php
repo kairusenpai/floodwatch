@@ -437,4 +437,22 @@ function showLogoutModal() {
 function closeLogoutModal() {
   document.getElementById('logoutModal').style.display = 'none';
 }
+
+// Update clock and date
+function updateDateTime() {
+  const now = new Date();
+  const options = { timeZone: 'Asia/Manila' };
+  const timeStr = now.toLocaleTimeString('en-US', { ...options, hour12: false });
+  const dateStr = now.toLocaleDateString('en-US', { ...options, month: 'short', day: 'numeric', year: 'numeric' });
+  
+  const clockEl = document.getElementById('clock');
+  const dateEl = document.getElementById('live-date');
+  
+  if (clockEl) clockEl.textContent = timeStr;
+  if (dateEl) dateEl.textContent = dateStr;
+}
+
+// Update immediately and every second
+updateDateTime();
+setInterval(updateDateTime, 1000);
 </script>
