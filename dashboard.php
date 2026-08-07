@@ -196,14 +196,10 @@ $sRes = $conn->query("
            sr.water_level, sr.alert_status
     FROM sensors s JOIN puroks p ON s.purok_id=p.id
     LEFT JOIN (
-        SELECT sensor_id, water_level, alert_status
+        SELECT sensor_id, water_level, alert_status,
+               ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC) as rn
         FROM sensor_readings
-        WHERE (sensor_id, recorded_at) IN (
-            SELECT sensor_id, MAX(recorded_at)
-            FROM sensor_readings
-            GROUP BY sensor_id
-        )
-    ) sr ON sr.sensor_id=s.id
+    ) sr ON sr.sensor_id=s.id AND sr.rn=1
     ORDER BY s.id");
 while($sr=$sRes->fetch_assoc()){
     // Use GPS coordinates if available, otherwise fallback to default

@@ -9,7 +9,7 @@ $msg = '';
 
 // ── Approve / Reject / Delete ────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    $id  = (int)$_POST['id'];
+    $id  = isset($_POST['id']) ? (int)$_POST['id'] : null;
     $uid = $_SESSION['user_id'];
     switch ($_POST['action']) {
 
@@ -37,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $msg = 'error:This email is already registered.';
                 } else {
                     $hashed = password_hash($pass, PASSWORD_BCRYPT);
+                    $status = 'approved';
                     
                     // Get next ID for TiDB compatibility
                     $result = $conn->query("SELECT MAX(id) as max_id FROM users");
@@ -44,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $nextId = ($row['max_id'] ?? 0) + 1;
                     
                     $stmt = $conn->prepare("INSERT INTO users (id, first_name, last_name, email, password, role, status, created_at) VALUES (?,?,?,?,?,?,?,NOW())");
-                    $stmt->bind_param('issssss', $nextId, $fname, $lname, $email, $hashed, $role, 'approved');
+                    $stmt->bind_param('issssss', $nextId, $fname, $lname, $email, $hashed, $role, $status);
                     if ($stmt->execute()) {
                         $newId = $nextId;
                         logActivity($conn, $uid, 'ADD_USER', "Added user: $email as $role");
