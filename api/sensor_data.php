@@ -92,11 +92,15 @@ if ($waterLevel >= 130) {
     $alertStatus = 'warning';
 }
 
-// Insert sensor reading
-$stmt = $conn->prepare("INSERT INTO sensor_readings (sensor_id, water_level, alert_status, recorded_at) VALUES (?, ?, ?, ?)");
-$stmt->bind_param('idss', $sensor['id'], $waterLevel, $alertStatus, $timestamp);
+// Insert sensor reading with manual ID for TiDB compatibility
+$result = $conn->query("SELECT MAX(id) as max_id FROM sensor_readings");
+$row = $result->fetch_assoc();
+$nextId = ($row['max_id'] ?? 0) + 1;
+
+$stmt = $conn->prepare("INSERT INTO sensor_readings (id, sensor_id, water_level, alert_status, recorded_at) VALUES (?, ?, ?, ?, ?)");
+$stmt->bind_param('iidss', $nextId, $sensor['id'], $waterLevel, $alertStatus, $timestamp);
 $stmt->execute();
-$readingId = $stmt->insert_id;
+$readingId = $nextId;
 $stmt->close();
 
 // Update sensor GPS coordinates if provided
