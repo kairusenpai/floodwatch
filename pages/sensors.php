@@ -115,8 +115,16 @@ $sRes = $conn->query("
     SELECT s.id, s.sensor_code, s.latitude, s.longitude, p.id as purok_id, p.name as purok,
            sr.water_level, sr.alert_status
     FROM sensors s JOIN puroks p ON s.purok_id=p.id
-    LEFT JOIN sensor_readings sr ON sr.sensor_id=s.id
-    AND sr.recorded_at=(SELECT MAX(recorded_at) FROM sensor_readings WHERE sensor_id=s.id AND DATE(recorded_at) = CURDATE())
+    LEFT JOIN (
+        SELECT sensor_id, water_level, alert_status
+        FROM sensor_readings
+        WHERE (sensor_id, recorded_at) IN (
+            SELECT sensor_id, MAX(recorded_at)
+            FROM sensor_readings
+            WHERE DATE(recorded_at) = CURDATE()
+            GROUP BY sensor_id
+        )
+    ) sr ON sr.sensor_id=s.id
     WHERE sr.recorded_at IS NULL OR DATE(sr.recorded_at) = CURDATE()
     ORDER BY s.id");
 while($sr=$sRes->fetch_assoc()){
