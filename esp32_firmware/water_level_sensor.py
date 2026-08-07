@@ -30,7 +30,8 @@ API_ENDPOINT = "/api/sensor_data.php"
 SENSOR_CODE = "SENSOR-01"
 SENSOR_PIN = 34
 
-READING_INTERVAL = 30000  # milliseconds
+READING_INTERVAL = 1000  # milliseconds (read every 1 second)
+SEND_INTERVAL = 30000  # milliseconds (send average every 30 seconds)
 
 
 # Calibration
@@ -66,9 +67,11 @@ CRITICAL_THRESHOLD = 130
 # ============================================================
 
 last_reading_time = 0
+last_send_time = 0
 last_alert_level = None  # Track last alert level to avoid duplicate SMS
 household_numbers = []  # Cache household phone numbers
 gps_data = {'lat': None, 'lng': None, 'fix': False}  # GPS coordinates
+readings_buffer = []  # Buffer to store readings for averaging
 
 
 # ESP32 ADC
@@ -710,6 +713,7 @@ while True:
     current_time = time.ticks_ms()
 
 
+    # Read water level every 1 second
     if (
         time.ticks_diff(
             current_time,
@@ -722,21 +726,48 @@ while True:
 
 
         level = read_water_level()
-
-
-        send_sensor_data(level)
         
-        # Check alert level and send SMS if needed
-        current_alert = get_alert_level(level)
+        # Add to buffer for averaging
+        readings_buffer.append(level)
         
-        # Send SMS only when alert level changes
-        if current_alert != last_alert_level and current_alert != 'safe':
-            send_alert_sms(level, current_alert)
-            last_alert_level = current_alert
-        elif current_alert == 'safe' and last_alert_level != 'safe':
-            # Reset when back to safe
-            last_alert_level = 'safe'
+        # Keep buffer size manageable (max 30 readings)
+        if len(readings_buffer) > 30:
+            readings_buffer.pop(0)
+
+
+    # Send average every 30 seconds
+    if (
+        time.ticks_diff(
+            current_time,
+            last_send_time
+        )
+        >= SEND_INTERVAL
+    ):
+
+        last_send_time = current_time
+        
+        # Calculate average from buffer
+        if readings_buffer:
+            avg_level = sum(readings_buffer) / len(readings_buffer)
+            avg_level = round(avg_level, 1)
+            print(f"Average of {len(readings_buffer)} readings: {avg_level} cm")
+            
+            send_sensor_data(avg_level)
+            
+            # Check alert level and send SMS if needed
+            current_alert = get_alert_level(avg_level)
+            
+            # Send SMS only when alert level changes
+            if current_alert != last_alert_level and current_alert != 'safe':
+                send_alert_sms(avg_level, current_alert)
+                last_alert_level = current_alert
+            elif current_alert == 'safe' and last_alert_level != 'safe':
+                # Reset when back to safe
+                last_alert_level = 'safe'
+            
+            # Clear buffer after sending
+            readings_buffer = []
 
 
 
-    time.sleep(1)
+    time.sleep(0.1)

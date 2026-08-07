@@ -35,11 +35,17 @@ $allPuroks = $conn->query("
     SELECT p.id, p.name,
            COUNT(h.id) as total_households,
            COALESCE(SUM(h.members_count), COUNT(h.id)) as total_members,
-           (SELECT alert_level FROM flood_alerts fa WHERE fa.purok_id=p.id AND fa.is_resolved=0 ORDER BY triggered_at DESC LIMIT 1) as current_alert,
-           (SELECT water_level FROM flood_alerts fa WHERE fa.purok_id=p.id AND fa.is_resolved=0 ORDER BY triggered_at DESC LIMIT 1) as current_level
+           fa.alert_level as current_alert,
+           fa.water_level as current_level
     FROM puroks p
     LEFT JOIN households h ON h.purok_id = p.id
-    GROUP BY p.id, p.name
+    LEFT JOIN (
+        SELECT purok_id, alert_level, water_level,
+               ROW_NUMBER() OVER (PARTITION BY purok_id ORDER BY triggered_at DESC) as rn
+        FROM flood_alerts
+        WHERE is_resolved = 0
+    ) fa ON fa.purok_id = p.id AND fa.rn = 1
+    GROUP BY p.id, p.name, fa.alert_level, fa.water_level
     ORDER BY p.id
 ");
 
