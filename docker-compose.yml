@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      - DB_HOST=${DB_HOST:-tidb}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASS=${DB_PASS:-}
+      - DB_NAME=${DB_NAME:-floodwatch_db}
+      - DB_PORT=${DB_PORT:-4000}
+    depends_on:
+      - tidb
+    networks:
+      - floodwatch-network
+
+  tidb:
+    image: pingcap/tidb:latest
+    ports:
+      - "4000:4000"
+    environment:
+      - TIDB_ROOT_PASSWORD=${TIDB_ROOT_PASSWORD:-}
+    networks:
+      - floodwatch-network
+
+networks:
+  floodwatch-network:
+    driver: bridge

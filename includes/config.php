@@ -4,10 +4,12 @@
 //  Brgy. Baliwagan, San Enrique, Negros Occidental
 // ============================================================
 
-define('DB_HOST', 'sql303.infinityfree.com');
-define('DB_USER', 'if0_42571082');
-define('DB_PASS', 'K1FLI1BvJLbAj');
-define('DB_NAME', 'if0_42571082_floodwatch_db');
+// Database Configuration - Use environment variables for Docker/Render
+define('DB_HOST', getenv('DB_HOST') ?: 'sql303.infinityfree.com');
+define('DB_USER', getenv('DB_USER') ?: 'if0_42571082');
+define('DB_PASS', getenv('DB_PASS') ?: 'K1FLI1BvJLbAj');
+define('DB_NAME', getenv('DB_NAME') ?: 'if0_42571082_floodwatch_db');
+define('DB_PORT', getenv('DB_PORT') ?: '3306');
 
 define('SITE_NAME', 'FloodWatch');
 define('SITE_LOCATION', 'Brgy. Baliwagan, San Enrique, Negros Occidental');
@@ -26,7 +28,7 @@ function redirect($path) {
 }
 
 // ── DB connection ────────────────────────────────────────────
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
 
 if ($conn->connect_error) {
     die('<!DOCTYPE html><html><head><meta charset="UTF-8">

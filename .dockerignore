@@ -1,0 +1,8 @@
+.git
+.gitignore
+README.md
+ESP32_SETUP_GUIDE.md
+.env
+.DS_Store
+Thumbs.db
+*.log
