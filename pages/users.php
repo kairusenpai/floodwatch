@@ -43,8 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $row = $result->fetch_assoc();
                     $nextId = ($row['max_id'] ?? 0) + 1;
                     
-                    $stmt = $conn->prepare("INSERT INTO users (id, first_name, last_name, email, password, role, status, created_at) VALUES (?,?,?,?,?,'approved',NOW())");
-                    $stmt->bind_param('issss', $nextId, $fname, $lname, $email, $hashed, $role);
+                    $stmt = $conn->prepare("INSERT INTO users (id, first_name, last_name, email, password, role, status, created_at) VALUES (?,?,?,?,?,?,?,NOW())");
+                    $stmt->bind_param('issssss', $nextId, $fname, $lname, $email, $hashed, $role, 'approved');
                     if ($stmt->execute()) {
                         $newId = $nextId;
                         logActivity($conn, $uid, 'ADD_USER', "Added user: $email as $role");
