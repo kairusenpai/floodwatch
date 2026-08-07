@@ -57,7 +57,7 @@ include '../includes/header.php';
         <td><span style="font-size:0.65rem;letter-spacing:1px;color:<?= $acolor ?>;font-weight:700;"><?= htmlspecialchars($l['action']) ?></span></td>
         <td style="font-size:0.65rem;color:var(--muted);max-width:240px;"><?= $l['details'] ? htmlspecialchars($l['details']) : '—' ?></td>
         <td style="font-size:0.62rem;color:var(--muted);"><?= htmlspecialchars($l['ip_address'] ?? '—') ?></td>
-        <td style="font-size:0.62rem;color:var(--muted);white-space:nowrap;"><?= date('M d, Y h:i:s A', strtotime($l['created_at'])) ?></td>
+        <td style="font-size:0.62rem;color:var(--muted);white-space:nowrap;"><?= date('M d, Y H:i:s', strtotime($l['created_at'])) ?></td>
       </tr>
       <?php endwhile; else: ?>
       <tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted);">No activity logs found.</td></tr>

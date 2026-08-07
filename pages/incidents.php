@@ -145,7 +145,7 @@ include '../includes/header.php';
         </td>
         <td><span class="badge badge-<?= $i['status'] ?>"><?= ucfirst($i['status']) ?></span></td>
         <td style="font-size:0.68rem;"><?= htmlspecialchars($i['logged_by_name']) ?></td>
-        <td style="font-size:0.65rem;color:var(--muted);"><?= date('M d, Y', strtotime($i['created_at'])) ?></td>
+        <td style="font-size:0.65rem;color:var(--muted);"><?= date('M d, Y H:i', strtotime($i['created_at'])) ?></td>
         <td>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
             <form method="POST" style="display:inline">

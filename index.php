@@ -212,7 +212,7 @@ select option{background:var(--panel);}
               <div style="width:<?=$barWidth?>%;height:100%;background:<?=$statusColor?>;transition:width 0.5s ease;"></div>
             </div>
             <?php if ($sensor['recorded_at']): ?>
-            <div style="font-size:0.55rem;color:var(--muted);text-align:right;"><?=date('h:i A',strtotime($sensor['recorded_at']))?></div>
+            <div style="font-size:0.55rem;color:var(--muted);text-align:right;"><?=date('H:i',strtotime($sensor['recorded_at']))?></div>
             <?php endif; ?>
           </div>
         <?php endforeach; ?>
@@ -293,7 +293,7 @@ function getPublicStatus(status) {
 function formatTime(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
-  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 function updateSensorDisplay(data) {

@@ -312,7 +312,7 @@ include '../includes/header.php';
         <td style="text-align:center;font-weight:700;color:var(--blue);"><?=$r?></td>
         <td style="text-align:center;font-weight:700;color:var(--cyan);"><?=$v?></td>
         <td style="text-align:center;font-weight:700;color:var(--safe);"><?=$f?></td>
-        <td style="font-size:.62rem;color:var(--muted);"><?=date('M d, h:i A',strtotime($a['triggered_at']))?></td>
+        <td style="font-size:.62rem;color:var(--muted);"><?=date('M d, H:i',strtotime($a['triggered_at']))?></td>
       </tr>
       <?php endwhile; ?>
       </tbody>

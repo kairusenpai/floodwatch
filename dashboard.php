@@ -103,7 +103,7 @@ include __DIR__ . '/includes/header.php';
         <span style="font-size:.6rem;padding:2px 6px;text-transform:uppercase;background:<?=$col?>22;color:<?=$col?>;"><?=ucfirst($st)?></span>
       </div>
       <?php if($r['recorded_at']): ?>
-      <div style="font-size:.58rem;color:var(--muted);margin-top:6px;">Last: <?=date('M d, h:i A',strtotime($r['recorded_at']))?></div>
+      <div style="font-size:.58rem;color:var(--muted);margin-top:6px;">Last: <?=date('M d, H:i',strtotime($r['recorded_at']))?></div>
       <?php endif; ?>
     </div>
     <?php endwhile; else: ?>
@@ -151,7 +151,7 @@ include __DIR__ . '/includes/header.php';
         <td><?=htmlspecialchars($a['purok'])?></td>
         <td style="font-weight:700;color:#fff;"><?=$a['water_level']?> cm</td>
         <td><span style="font-size:.58rem;padding:2px 8px;text-transform:uppercase;font-weight:700;background:<?=$bc?>22;color:<?=$bc?>;"><?=ucfirst($a['alert_level'])?></span></td>
-        <td style="color:var(--muted);font-size:.65rem;"><?=date('M d, h:i A',strtotime($a['triggered_at']))?></td>
+        <td style="color:var(--muted);font-size:.65rem;">"><?=date('M d, H:i:s',strtotime($a['triggered_at']))?></td>
       </tr>
       <?php endwhile; ?>
       </tbody>

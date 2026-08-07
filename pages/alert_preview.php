@@ -68,7 +68,7 @@ function buildSensorCards($sensors, $alertColors, $highlight = null) {
         $color  = $alertColors[$status] ?? '#00e676';
         $pct    = min(100, ($level / 160) * 100);
         $isCrit = $status === 'critical';
-        $time   = $s['recorded_at'] ? date('M d, h:i A', strtotime($s['recorded_at'])) : 'No data';
+        $time   = $s['recorded_at'] ? date('M d, H:i', strtotime($s['recorded_at'])) : 'No data';
 
         $html .= "<div class='sensor-card-prev is-{$status}'>
             <div class='sc-code'>{$s['sensor_code']}</div>
@@ -303,7 +303,7 @@ foreach (['warning','danger','critical'] as $tabLevel):
         <td><?=htmlspecialchars($a['purok'])?></td>
         <td style="font-weight:700;color:#fff;"><?=$a['water_level']?> cm</td>
         <td><span style="font-size:.6rem;padding:2px 8px;font-weight:700;background:<?=$ac?>22;color:<?=$ac?>;"><?=ucfirst($a['alert_level'])?></span></td>
-        <td style="color:var(--muted);font-size:.65rem;"><?=date('M d, h:i A',strtotime($a['triggered_at']))?></td>
+        <td style="color:var(--muted);font-size:.65rem;"><?=date('M d, H:i',strtotime($a['triggered_at']))?></td>
         <td><span style="font-size:.6rem;padding:2px 8px;font-weight:700;background:rgba(255,51,85,.12);color:var(--danger);">Active</span></td>
       </tr>
       <?php endforeach; else: ?>
