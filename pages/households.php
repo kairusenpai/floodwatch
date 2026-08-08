@@ -40,6 +40,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     $msg = 'success:Household deleted.';
 }
 
+// ── Edit household ────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit') {
+    requireAdmin();
+    $id = (int)$_POST['id'];
+    $purok_id = (int)$_POST['purok_id'];
+    $head = trim($_POST['head_of_household'] ?? '');
+    $contact = trim($_POST['contact_number'] ?? '');
+    $members = (int)($_POST['members_count'] ?? 1);
+
+    if ($purok_id && $head) {
+        $stmt = $conn->prepare("UPDATE households SET purok_id=?, head_of_household=?, contact_number=?, members_count=? WHERE id=?");
+        $stmt->bind_param('issii', $purok_id, $head, $contact, $members, $id);
+        $stmt->execute();
+        logActivity($conn, $_SESSION['user_id'], 'EDIT_HOUSEHOLD', "Edited household #$id: $head");
+        $msg = 'success:Household updated successfully.';
+        $stmt->close();
+    } else {
+        $msg = 'error:Purok and Head of Household are required.';
+    }
+}
+
 $filterPurok = (int)($_GET['purok'] ?? 0);
 $search      = trim($_GET['search'] ?? '');
 
@@ -124,7 +145,10 @@ include '../includes/header.php';
         <td style="text-align:center;"><?= $h['members_count'] ?></td>
         <?php if ($_SESSION['role']==='admin'): ?>
         <td>
-          <button type="button" class="btn btn-danger btn-sm" onclick="showDeleteModal('household', <?= $h['id'] ?>, '<?= htmlspecialchars($h['head_of_household']) ?>')">Del</button>
+          <div style="display:flex;gap:6px;">
+            <button type="button" class="btn btn-sm" onclick="showEditModal(<?= $h['id'] ?>, <?= $h['purok_id'] ?>, '<?= htmlspecialchars($h['head_of_household']) ?>', '<?= htmlspecialchars($h['contact_number']) ?>', <?= $h['members_count'] ?>)">Edit</button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="showDeleteModal('household', <?= $h['id'] ?>, '<?= htmlspecialchars($h['head_of_household']) ?>')">Del</button>
+          </div>
         </td>
         <?php endif; ?>
       </tr>
@@ -173,6 +197,44 @@ include '../includes/header.php';
   </div>
 </div>
 
+<!-- EDIT MODAL -->
+<div id="modal-edit" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--panel);border:1px solid var(--border);padding:28px;width:100%;max-width:480px;position:relative;">
+    <div style="font-family:var(--font-head);font-size:1rem;font-weight:800;color:#fff;margin-bottom:20px;">Edit Household</div>
+    <form method="POST">
+      <input type="hidden" name="action" value="edit">
+      <input type="hidden" name="id" id="edit_id">
+      <div class="form-group">
+        <label class="form-label">Purok *</label>
+        <select name="purok_id" id="edit_purok_id" class="form-control" required>
+          <option value="">Select Purok</option>
+          <?php $puroks->data_seek(0); while ($p = $puroks->fetch_assoc()): ?>
+          <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
+          <?php endwhile; ?>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Head of Household *</label>
+        <input type="text" name="head_of_household" id="edit_head" class="form-control" placeholder="Full name" required>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Contact Number</label>
+          <input type="text" name="contact_number" id="edit_contact" class="form-control" placeholder="09XX-XXX-XXXX">
+        </div>
+        <div class="form-group">
+          <label class="form-label">No. of Members</label>
+          <input type="number" name="members_count" id="edit_members" class="form-control" value="1" min="1">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary">Update Household</button>
+        <button type="button" class="btn" onclick="document.getElementById('modal-edit').style.display='none'">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Delete Confirmation Modal -->
 <div id="deleteModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;">
   <div style="background:var(--panel);border:1px solid var(--border);padding:24px;max-width:400px;width:90%;border-radius:8px;">
@@ -208,6 +270,15 @@ function closeDeleteModal() {
 
 function confirmDelete() {
   document.getElementById('deleteForm').submit();
+}
+
+function showEditModal(id, purokId, head, contact, members) {
+  document.getElementById('edit_id').value = id;
+  document.getElementById('edit_purok_id').value = purokId;
+  document.getElementById('edit_head').value = head;
+  document.getElementById('edit_contact').value = contact;
+  document.getElementById('edit_members').value = members;
+  document.getElementById('modal-edit').style.display = 'flex';
 }
 </script>
 
