@@ -263,82 +263,113 @@ def read_gps():
 # ============================================================
 
 def init_sim800l():
-    """Initialize SIM800L module"""
+    """Initialize and diagnose SIM800L"""
+
     if not SMS_ENABLED:
         return False
-    
-    print("Initializing SIM800L...")
-    
-    # Send AT command to check if module is responsive
+
+    print("\n=== SIM800L INITIALIZATION ===")
+
+    # Clear any old UART data
+    sim800l.read()
+
+    # ------------------------------------------------
+    # 1. Check SIM800L communication
+    # ------------------------------------------------
     sim800l.write(b'AT\r\n')
     time.sleep(1)
-    
+
     response = sim800l.read()
-    if response and b'OK' in response:
-        print("✓ SIM800L detected")
-        
-        # Check SIM card status
-        sim800l.write(b'AT+CPIN?\r\n')
-        time.sleep(1)
-        response = sim800l.read()
-        print("SIM card status:", response)
-        
-        # If SIM requires PIN, try common PINs (Talk N Text default is often 1234)
-        if response and b'ERROR' in response:
-            print("SIM may require PIN or not detected")
-            print("Trying default PIN 1234...")
-            sim800l.write(b'AT+CPIN="1234"\r\n')
-            time.sleep(2)
-            response = sim800l.read()
-            print("PIN attempt response:", response)
-            
-            # If still error, try without PIN
-            if response and b'ERROR' in response:
-                print("PIN failed, checking if SIM is detected at all...")
-                sim800l.write(b'AT+CCID\r\n')
-                time.sleep(1)
-                response = sim800l.read()
-                print("SIM ICCID:", response)
-        
-        # Set text mode
-        sim800l.write(b'AT+CMGF=1\r\n')
-        time.sleep(0.5)
-        sim800l.read()
-        
-        # Check network registration
-        sim800l.write(b'AT+CREG?\r\n')
-        time.sleep(1)
-        response = sim800l.read()
-        print("Network registration:", response)
-        
-        # If not registered, try to force registration
-        if response and b'CREG: 0,0' in response:
-            print("Not registered, forcing network search...")
-            sim800l.write(b'AT+CREG=1\r\n')
-            time.sleep(1)
-            sim800l.read()
-            print("Waiting for network registration (up to 30 seconds)...")
-            for i in range(30):
-                time.sleep(1)
-                sim800l.write(b'AT+CREG?\r\n')
-                time.sleep(0.5)
-                response = sim800l.read()
-                if response and (b'CREG: 1,1' in response or b'CREG: 1,5' in response):
-                    print("✓ Network registered!")
-                    break
-                if i % 5 == 0:
-                    print(f"Waiting... {i}s")
-        
-        # Check signal strength
-        sim800l.write(b'AT+CSQ\r\n')
-        time.sleep(0.5)
-        response = sim800l.read()
-        print("Signal strength:", response)
-        
-        return True
-    else:
-        print("✗ SIM800L not detected")
+
+    if not response or b'OK' not in response:
+        print("✗ SIM800L not responding")
         return False
+
+    print("✓ SIM800L detected")
+
+    # ------------------------------------------------
+    # 2. Check SIM card
+    # ------------------------------------------------
+    sim800l.write(b'AT+CPIN?\r\n')
+    time.sleep(1)
+
+    response = sim800l.read()
+    print("SIM status:", response)
+
+    if response and b'+CPIN: READY' in response:
+        print("✓ SIM card detected and ready")
+
+    elif response and b'+CPIN: SIM PIN' in response:
+        print("SIM requires PIN")
+
+        # Only use this if you KNOW your SIM PIN
+        print("Attempting SIM PIN...")
+
+        sim800l.write(b'AT+CPIN="1234"\r\n')
+        time.sleep(3)
+
+        pin_response = sim800l.read()
+        print("PIN response:", pin_response)
+
+        if not pin_response or b'OK' not in pin_response:
+            print("✗ SIM PIN failed")
+            return False
+
+    else:
+        print("✗ SIM card not detected")
+
+        # Try ICCID for confirmation
+        sim800l.write(b'AT+CCID\r\n')
+        time.sleep(1)
+
+        iccid = sim800l.read()
+        print("ICCID:", iccid)
+
+        if not iccid or b'OK' not in iccid:
+            print("✗ SIM card cannot be read")
+            print("Check SIM card insertion, SIM holder, and power.")
+            return False
+
+    # ------------------------------------------------
+    # 3. Check signal
+    # ------------------------------------------------
+    sim800l.write(b'AT+CSQ\r\n')
+    time.sleep(1)
+
+    signal = sim800l.read()
+    print("Signal strength:", signal)
+
+    # ------------------------------------------------
+    # 4. Check network registration
+    # ------------------------------------------------
+    sim800l.write(b'AT+CREG?\r\n')
+    time.sleep(1)
+
+    registration = sim800l.read()
+    print("Network registration:", registration)
+
+    if registration and (
+        b'+CREG: 0,1' in registration or
+        b'+CREG: 0,5' in registration or
+        b'+CREG: 1,1' in registration or
+        b'+CREG: 1,5' in registration
+    ):
+        print("✓ Network registered")
+    else:
+        print("⚠ SIM detected but not registered yet")
+
+    # ------------------------------------------------
+    # 5. SMS text mode
+    # ------------------------------------------------
+    sim800l.write(b'AT+CMGF=1\r\n')
+    time.sleep(1)
+
+    sms_response = sim800l.read()
+    print("SMS mode:", sms_response)
+
+    print("=== SIM800L INITIALIZATION COMPLETE ===\n")
+
+    return True
 
 
 def send_sms(phone_number, message):
@@ -439,10 +470,12 @@ def send_alert_sms(water_level, alert_level):
     if not SMS_ENABLED or not household_numbers:
         return
     
+    timestamp = get_timestamp()
+    
     messages = {
-        'warning': "FLOODWATCH [WARNING] Brgy. Baliwagan: Water level at {}cm. Flooding possible. Monitor the situation and prepare. -FloodWatch EWS".format(water_level),
-        'danger': "FLOODWATCH [DANGER] Brgy. Baliwagan: Water level at {}cm. HIGH FLOOD RISK. Prepare for evacuation. Move to higher ground now. -FloodWatch EWS".format(water_level),
-        'critical': "FLOODWATCH [CRITICAL] Brgy. Baliwagan: Water level at {}cm. EVACUATE IMMEDIATELY! Go to evacuation center. This is an emergency. -FloodWatch EWS".format(water_level)
+        'warning': "FLOODWATCH [WARNING] Brgy. Baliwagan: Water level at {}cm. Flooding possible. Monitor the situation and prepare. Time: {} -FloodWatch EWS".format(water_level, timestamp),
+        'danger': "FLOODWATCH [DANGER] Brgy. Baliwagan: Water level at {}cm. HIGH FLOOD RISK. Prepare for evacuation. Move to higher ground now. Time: {} -FloodWatch EWS".format(water_level, timestamp),
+        'critical': "FLOODWATCH [CRITICAL] Brgy. Baliwagan: Water level at {}cm. EVACUATE IMMEDIATELY! Go to evacuation center. This is an emergency. Time: {} -FloodWatch EWS".format(water_level, timestamp)
     }
     
     message = messages.get(alert_level, messages['warning'])
