@@ -36,6 +36,13 @@ $recentIncidents = $conn->query("
     WHERE DATE(il.created_at) = CURDATE()
     ORDER BY il.created_at DESC LIMIT 5");
 
+$smsLogs = $conn->query("
+    SELECT al.*, CONCAT(u.first_name,' ',u.last_name) as user_name
+    FROM activity_logs al
+    LEFT JOIN users u ON al.user_id = u.id
+    WHERE al.action = 'SMS_ALERT'
+    ORDER BY al.created_at DESC LIMIT 5");
+
 include __DIR__ . '/includes/header.php';
 ?>
 
@@ -178,6 +185,33 @@ include __DIR__ . '/includes/header.php';
     <div style="text-align:center;padding:24px;color:var(--muted);font-size:.7rem;">No incident logs yet</div>
     <?php endif; ?>
   </div>
+</div>
+
+<!-- SMS ACTIVITY LOGS -->
+<div class="card">
+  <div class="card-title">
+    <span>📱 SMS Activity Logs</span>
+    <a href="<?=BASE_URL?>/pages/activity.php" class="btn btn-sm">View All</a>
+  </div>
+  <?php if($smsLogs&&$smsLogs->num_rows>0): ?>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Time</th><th>Action</th><th>Details</th><th>User</th></tr></thead>
+    <tbody>
+    <?php
+    while($log=$smsLogs->fetch_assoc()):
+    ?>
+    <tr>
+      <td style="color:var(--cyan);font-size:.65rem;"><?=date('M d, Y H:i',strtotime($log['created_at']))?></td>
+      <td><span style="font-size:.58rem;padding:2px 8px;text-transform:uppercase;font-weight:700;background:var(--blue)22;color:var(--blue);">SMS_ALERT</span></td>
+      <td style="font-size:.65rem;color:var(--muted);"><?=htmlspecialchars($log['details'])?></td>
+      <td style="font-size:.65rem;color:#fff;"><?=htmlspecialchars($log['user_name']??'System')?></td>
+    </tr>
+    <?php endwhile; ?>
+    </tbody>
+  </table></div>
+  <?php else: ?>
+  <div style="text-align:center;padding:24px;color:var(--muted);font-size:.7rem;">No SMS activity logs found</div>
+  <?php endif; ?>
 </div>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
