@@ -139,7 +139,7 @@ include '../includes/header.php';
             </form>
             <?php endif; ?>
             <?php if ($_SESSION['role']==='admin'): ?>
-            <button type="button" class="btn btn-danger btn-sm" onclick="showDeleteModal('alert', <?= $a['id'] ?>, '<?= htmlspecialchars($a['alert_level']) ?> alert for Purok <?= $a['purok_id'] ?>')">Del</button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="showDeleteModal('alert', <?= $a['id'] ?>, '<?= htmlspecialchars($a['alert_level']) ?> alert for Purok <?= $a['purok_id'] ?>')">DELETE</button>
             <?php endif; ?>
           </div>
         </td>
