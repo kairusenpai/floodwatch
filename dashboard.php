@@ -89,7 +89,7 @@ include __DIR__ . '/includes/header.php';
       <div style="font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;"><?=htmlspecialchars($r['sensor_code'])?></div>
       <div style="font-family:var(--font-head);font-size:.9rem;font-weight:600;color:#fff;margin-bottom:8px;"><?=htmlspecialchars($r['purok'])?></div>
       <div style="background:rgba(0,0,0,.4);height:12px;margin-bottom:8px;overflow:hidden;">
-        <div style="width:<?=$pct?>%;height:100%;background:<?=$col?>;box-shadow:0 0 8px <?=$col?>44;transition:width 1s;"></div>
+        <div style="width:<?=$pct?>%;height:100%;background:<?=$col?>;box-shadow:0 0 8px <?=$col?>44;"></div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:.7rem;">
         <span style="color:#fff;font-weight:700;"><?=$lv?round($lv).' cm':'No data'?></span>

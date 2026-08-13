@@ -452,6 +452,7 @@ function updateDateTime() {
   if (dateEl) dateEl.textContent = dateStr;
 }
 
-// Update immediately (no auto-refresh to prevent flickering)
+// Update immediately and every second
 updateDateTime();
+setInterval(updateDateTime, 1000);
 </script>
