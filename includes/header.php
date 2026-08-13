@@ -447,7 +447,7 @@ function closeLogoutModal() {
 function updateDateTime() {
   const now = new Date();
   const options = { timeZone: 'Asia/Manila' };
-  const timeStr = now.toLocaleTimeString('en-US', { ...options, hour12: false });
+  const timeStr = now.toLocaleTimeString('en-US', { ...options, hour12: false, hour: '2-digit', minute: '2-digit' });
   const dateStr = now.toLocaleDateString('en-US', { ...options, month: 'short', day: 'numeric', year: 'numeric' });
   
   const clockEl = document.getElementById('clock');
@@ -463,7 +463,7 @@ function updateDateTime() {
   }
 }
 
-// Update immediately and every second
+// Update immediately and every minute (not every second to prevent flickering)
 updateDateTime();
-setInterval(updateDateTime, 1000);
+setInterval(updateDateTime, 60000);
 </script>
