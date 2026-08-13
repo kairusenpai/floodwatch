@@ -74,8 +74,9 @@ include __DIR__ . '/includes/header.php';
   <div class="card">
     <div class="card-title">
       <span>📡 Sensor Network — Live Readings</span>
+      <span style="font-size:.62rem;color:var(--muted)" id="sensor-refresh">Auto-refreshing in 30s</span>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div id="sensor-readings-container" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
     <?php
     $ac=['safe'=>'#00ff00','warning'=>'#ffff00','danger'=>'#ff8c00','critical'=>'#ff0000'];
     if($latestReadings&&$latestReadings->num_rows>0):
@@ -274,6 +275,68 @@ SENSORS_DATA.forEach(s=>{
 });
 
 window.addEventListener('resize',()=>map.invalidateSize());
+
+// Auto-refresh sensor readings every 30 seconds
+let sensorCountdown = 30;
+const sensorRefreshEl = document.getElementById('sensor-refresh');
+const sensorContainer = document.getElementById('sensor-readings-container');
+
+function fetchSensorReadings() {
+  fetch('api/public_sensor_data.php')
+    .then(response => response.json())
+    .then(result => {
+      if (result.status === 'success') {
+        updateSensorReadingsDisplay(result.data);
+      }
+    })
+    .catch(err => console.error('Failed to fetch sensor readings:', err));
+}
+
+function updateSensorReadingsDisplay(data) {
+  if (!sensorContainer) return;
+  
+  const ac = {safe:'#00ff00',warning:'#ffff00',danger:'#ff8c00',critical:'#ff0000'};
+  let html = '';
+  
+  if (data.length === 0) {
+    html = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:.7rem;">No sensor readings yet.<br><small>Run a simulation or wait for sensors to transmit.</small></div>';
+  } else {
+    data.forEach(r => {
+      const lv = r.water_level || 0;
+      const st = r.alert_status || 'safe';
+      const pct = Math.min(100, (lv / 160) * 100);
+      const col = ac[st] || '#00ff00';
+      
+      html += `
+        <div style="background:var(--panel2);border:1px solid var(--border);border-left:3px solid ${col};padding:14px;">
+          <div style="font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">${r.sensor_code}</div>
+          <div style="font-family:var(--font-head);font-size:.9rem;font-weight:600;color:#fff;margin-bottom:8px;">${r.purok}</div>
+          <div style="background:rgba(0,0,0,.4);height:12px;margin-bottom:8px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:${col};box-shadow:0 0 8px ${col}44;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:.7rem;">
+            <span style="color:#fff;font-weight:700;">${lv ? Math.round(lv) + ' cm' : 'No data'}</span>
+            <span style="font-size:.6rem;padding:2px 6px;text-transform:uppercase;background:${col}22;color:${col};">${st.charAt(0).toUpperCase() + st.slice(1)}</span>
+          </div>
+          ${r.recorded_at ? `<div style="font-size:.58rem;color:var(--cyan);margin-top:6px;">Device sent: ${new Date(r.recorded_at).toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})}</div>` : ''}
+        </div>
+      `;
+    });
+  }
+  
+  sensorContainer.innerHTML = html;
+}
+
+if (sensorRefreshEl && sensorContainer) {
+  setInterval(() => {
+    sensorCountdown--;
+    sensorRefreshEl.textContent = `Auto-refreshing in ${sensorCountdown}s`;
+    if (sensorCountdown <= 0) {
+      sensorCountdown = 30;
+      fetchSensorReadings();
+    }
+  }, 1000);
+}
 </script>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>
