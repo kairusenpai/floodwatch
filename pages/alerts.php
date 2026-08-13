@@ -118,7 +118,7 @@ include '../includes/header.php';
         <td><?= htmlspecialchars($a['purok']) ?></td>
         <td><span class="badge badge-<?= $a['alert_level'] ?>"><?= ucfirst($a['alert_level']) ?></span></td>
         <td style="font-weight:700;color:#fff;"><?= $a['water_level'] ?> cm</td>
-        <td style="font-size:0.65rem;color:var(--cyan);">SMS sent: <?= date('M d, Y H:i:s', strtotime($a['triggered_at'])) ?></td>
+        <td style="font-size:0.65rem;color:var(--cyan);">SMS sent: <?= date('M d, Y H:i', strtotime($a['triggered_at'])) ?></td>
         <td>
           <?php if ($a['is_resolved']): ?>
             <span class="badge badge-approved">Resolved</span>

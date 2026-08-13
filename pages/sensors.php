@@ -74,7 +74,7 @@ include '../includes/header.php';
           <?php endif; ?>
         </td>
         <td style="font-size:0.65rem;color:var(--cyan);">
-          <?= $s['last_reading'] ? date('M d, Y H:i:s', strtotime($s['last_reading'])) : '—' ?>
+          <?= $s['last_reading'] ? date('M d, Y H:i', strtotime($s['last_reading'])) : '—' ?>
         </td>
         <td style="text-align:center;"><?= number_format($s['reading_count']) ?></td>
         <td style="font-size:0.65rem;color:var(--muted);"><?= $s['installed_at'] ? date('M d, Y', strtotime($s['installed_at'])) : '—' ?></td>
