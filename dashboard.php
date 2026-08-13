@@ -97,7 +97,7 @@ include __DIR__ . '/includes/header.php';
         <span style="font-size:.6rem;padding:2px 6px;text-transform:uppercase;background:<?=$col?>22;color:<?=$col?>;"><?=ucfirst($st)?></span>
       </div>
       <?php if($r['recorded_at']): ?>
-      <div style="font-size:.58rem;color:var(--muted);margin-top:6px;">Last: <?=date('M d, H:i',strtotime($r['recorded_at']))?></div>
+      <div style="font-size:.58rem;color:var(--cyan);margin-top:6px;">Device sent: <?=date('M d, Y H:i:s',strtotime($r['recorded_at']))?></div>
       <?php endif; ?>
     </div>
     <?php endwhile; else: ?>

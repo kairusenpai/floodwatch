@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 :root {
   --bg:#050d1a; --panel:#0a1628; --panel2:#0d1e35; --border:#1a3050; --border-hover:#2a4a70;
   --blue:#00aaff; --cyan:#00e5ff; --warn:#ffaa00; --danger:#ff3355; --safe:#00e676;
-  --text:#c8dff0; --muted:#4a6a8a;
+  --text:#fff; --muted:#fff;
   --font-head:'Syne',sans-serif; --font-mono:'Space Mono',monospace;
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
