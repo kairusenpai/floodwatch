@@ -108,6 +108,12 @@ include '../includes/header.php';
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+#sensor-map {
+  will-change: transform;
+  transform: translateZ(0);
+}
+</style>
 <script>
 const SENSORS_DATA = <?php
 $mapSensors = [];
