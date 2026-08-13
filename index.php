@@ -217,6 +217,9 @@ select option{background:var(--panel);}
           </div>
         <?php endforeach; ?>
       </div>
+      <div style="margin-top:12px;font-size:0.58rem;color:var(--muted);text-align:center;">
+        <span id="public-refresh">Auto-refreshing in 30s</span>
+      </div>
     </div>
     <div class="footer-note">
       Authorized personnel only.<br>
@@ -334,6 +337,16 @@ function fetchSensorData() {
     .catch(err => console.error('Failed to fetch sensor data:', err));
 }
 
+if (publicRefreshEl && sensorContainer) {
+  setInterval(() => {
+    publicCountdown--;
+    publicRefreshEl.textContent = `Auto-refreshing in ${publicCountdown}s`;
+    if (publicCountdown <= 0) {
+      publicCountdown = 30;
+      fetchSensorData();
+    }
+  }, 1000);
+}
 </script>
 </body>
 </html>
