@@ -144,7 +144,7 @@ include __DIR__ . '/includes/header.php';
         <td><?=htmlspecialchars($a['purok'])?></td>
         <td style="font-weight:700;color:#fff;"><?=$a['water_level']?> cm</td>
         <td><span style="font-size:.58rem;padding:2px 8px;text-transform:uppercase;font-weight:700;background:<?=$bc?>22;color:<?=$bc?>;"><?=ucfirst($a['alert_level'])?></span></td>
-        <td style="color:var(--muted);font-size:.65rem;">"><?=date('M d, H:i:s',strtotime($a['triggered_at']))?></td>
+        <td style="color:var(--cyan);font-size:.65rem;">SMS sent: <?=date('M d, Y H:i:s',strtotime($a['triggered_at']))?></td>
       </tr>
       <?php endwhile; ?>
       </tbody>
