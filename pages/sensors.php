@@ -195,11 +195,6 @@ SENSORS_DATA.forEach(s=>{
 });
 
 window.addEventListener('resize',()=>map.invalidateSize());
-
-// Auto-refresh page every 30 seconds
-setInterval(()=>{
-  location.reload();
-}, 30000);
 </script>
 
 <?php include '../includes/footer.php'; ?>

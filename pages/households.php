@@ -147,7 +147,7 @@ include '../includes/header.php';
         <td>
           <div style="display:flex;gap:6px;">
             <button type="button" class="btn btn-sm" onclick="showEditModal(<?= $h['id'] ?>, <?= $h['purok_id'] ?>, '<?= htmlspecialchars($h['head_of_household']) ?>', '<?= htmlspecialchars($h['contact_number']) ?>', <?= $h['members_count'] ?>)">Edit</button>
-            <button type="button" class="btn btn-danger btn-sm" onclick="showDeleteModal('household', <?= $h['id'] ?>, '<?= htmlspecialchars($h['head_of_household']) ?>')">Del</button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="showDeleteModal('household', <?= $h['id'] ?>, '<?= htmlspecialchars($h['head_of_household']) ?>')">DELETE</button>
           </div>
         </td>
         <?php endif; ?>

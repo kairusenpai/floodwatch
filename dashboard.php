@@ -74,7 +74,6 @@ include __DIR__ . '/includes/header.php';
   <div class="card">
     <div class="card-title">
       <span>📡 Sensor Network — Live Readings</span>
-      <span style="font-size:.62rem;color:var(--muted)" id="update-counter">Updated 0s ago</span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
     <?php
@@ -269,12 +268,6 @@ SENSORS_DATA.forEach(s=>{
 });
 
 window.addEventListener('resize',()=>map.invalidateSize());
-let sec=0;setInterval(()=>{sec++;const el=document.getElementById('update-counter');if(el)el.textContent=`Updated ${sec}s ago`;},1000);
-
-// Auto-refresh page every 30 seconds
-setInterval(()=>{
-  location.reload();
-}, 30000);
 </script>
 
 <?php include __DIR__ . '/includes/footer.php'; ?>
