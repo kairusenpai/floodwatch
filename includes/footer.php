@@ -5,13 +5,7 @@
 </div><!-- end .main -->
 
 <script>
-function updateClock() {
-  const now = new Date();
-  document.getElementById('clock').textContent = now.toLocaleTimeString('en-PH', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-  document.getElementById('live-date').textContent = now.toLocaleDateString('en-PH', {weekday:'short',year:'numeric',month:'short',day:'numeric'});
-}
-setInterval(updateClock, 1000);
-updateClock();
+// Clock update is handled in header.php to prevent conflicts
 </script>
 </body>
 </html>

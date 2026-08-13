@@ -176,6 +176,11 @@ body::after {
   display: flex;
   flex-direction: column;
 }
+#clock, #live-date {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
 .topbar {
   display: flex;
   align-items: center;
@@ -448,8 +453,14 @@ function updateDateTime() {
   const clockEl = document.getElementById('clock');
   const dateEl = document.getElementById('live-date');
   
-  if (clockEl) clockEl.textContent = timeStr;
-  if (dateEl) dateEl.textContent = dateStr;
+  if (clockEl) {
+    clockEl.style.opacity = '1';
+    clockEl.textContent = timeStr;
+  }
+  if (dateEl) {
+    dateEl.style.opacity = '1';
+    dateEl.textContent = dateStr;
+  }
 }
 
 // Update immediately and every second
