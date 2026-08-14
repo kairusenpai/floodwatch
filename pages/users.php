@@ -152,7 +152,7 @@ include '../includes/header.php';
                 <option value="operator" <?= $u['role']==='operator'?'selected':'' ?>>Operator</option>
               </select>
             </form>
-            <button type="button" class="btn btn-danger btn-sm" onclick="showDeleteModal('user', <?= $u['id'] ?>, '<?= htmlspecialchars($u['first_name'] . ' ' . $u['last_name']) ?>')">Del</button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="showDeleteModal('user', <?= $u['id'] ?>, '<?= htmlspecialchars($u['first_name'] . ' ' . $u['last_name']) ?>')">DELETE</button>
             <?php endif; ?>
           </div>
         </td>
