@@ -155,9 +155,10 @@ if ($alertStatus !== 'safe') {
         $alertId = $nextId;
         $stmt->close();
 
-        // Send SMS alert to affected households
-        require_once '../includes/sms.php';
-        $smsResult = sendFloodAlertSMS($conn, $alertStatus, $waterLevel, [$sensor['purok_id']]);
+        // SMS sending is handled by ESP32 SIM800L module, not server-side
+        // Server-side SMS disabled to use ESP32 hardware SMS instead
+        // require_once '../includes/sms.php';
+        // $smsResult = sendFloodAlertSMS($conn, $alertStatus, $waterLevel, [$sensor['purok_id']]);
     }
 } elseif ($existingAlert && $alertStatus === 'safe') {
     // Auto-resolve alert if water level is now safe
