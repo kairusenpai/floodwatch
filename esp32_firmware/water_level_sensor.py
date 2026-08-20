@@ -550,8 +550,12 @@ def get_timestamp():
 # ============================================================
 
 def read_water_level():
-
-    analog_value = sensor.read()
+    # Oversampling: take 5 samples and average them
+    samples = []
+    for _ in range(5):
+        samples.append(sensor.read())
+        time.sleep(0.01)
+    analog_value = sum(samples) / len(samples)
 
     voltage = (analog_value / 4095) * 3.3
 
@@ -763,8 +767,8 @@ while True:
         # Add to buffer for averaging
         readings_buffer.append(level)
         
-        # Keep buffer size manageable (max 30 readings)
-        if len(readings_buffer) > 30:
+        # Keep buffer size manageable (max 100 readings for better accuracy)
+        if len(readings_buffer) > 100:
             readings_buffer.pop(0)
 
 
@@ -779,11 +783,23 @@ while True:
 
         last_send_time = current_time
         
-        # Calculate average from buffer
+        # Calculate average from buffer with outlier filtering
         if readings_buffer:
-            avg_level = sum(readings_buffer) / len(readings_buffer)
-            avg_level = round(avg_level, 1)
-            print(f"Average of {len(readings_buffer)} readings: {avg_level} cm")
+            # Remove outliers (readings that deviate more than 10cm from mean)
+            mean_level = sum(readings_buffer) / len(readings_buffer)
+            filtered_buffer = [r for r in readings_buffer if abs(r - mean_level) < 10]
+            
+            if filtered_buffer:
+                # Use median for better accuracy (less affected by outliers)
+                filtered_buffer.sort()
+                median_level = filtered_buffer[len(filtered_buffer) // 2]
+                avg_level = round(median_level, 1)
+                print(f"Filtered {len(readings_buffer) - len(filtered_buffer)} outliers")
+                print(f"Median of {len(filtered_buffer)} readings: {avg_level} cm")
+            else:
+                # Fallback to mean if all readings were filtered
+                avg_level = round(mean_level, 1)
+                print(f"Mean of {len(readings_buffer)} readings: {avg_level} cm")
             
             send_sensor_data(avg_level)
             
