@@ -103,11 +103,11 @@ include __DIR__ . '/includes/header.php';
       <div style="background:rgba(0,0,0,.4);height:12px;margin-bottom:8px;overflow:hidden;position:relative;">
         <div style="width:<?=$pct?>%;height:100%;background:<?=$col?>;box-shadow:0 0 8px <?=$col?>44;"></div>
         <!-- Warning threshold line (70cm) -->
-        <div class="threshold-line" data-level="70cm" style="position:absolute;left:<?=$warning_pct?>%;top:0;bottom:0;width:1px;background:#ffff00;opacity:0.7;cursor:pointer;"></div>
+        <div class="threshold-line" data-level="Warning: 70cm" style="position:absolute;left:<?=$warning_pct?>%;top:0;bottom:0;width:1px;background:#ffff00;opacity:0.7;cursor:pointer;"></div>
         <!-- Danger threshold line (100cm) -->
-        <div class="threshold-line" data-level="100cm" style="position:absolute;left:<?=$danger_pct?>%;top:0;bottom:0;width:1px;background:#ff8c00;opacity:0.7;cursor:pointer;"></div>
+        <div class="threshold-line" data-level="Danger: 100cm" style="position:absolute;left:<?=$danger_pct?>%;top:0;bottom:0;width:1px;background:#ff8c00;opacity:0.7;cursor:pointer;"></div>
         <!-- Critical threshold line (130cm) -->
-        <div class="threshold-line" data-level="130cm" style="position:absolute;left:<?=$critical_pct?>%;top:0;bottom:0;width:1px;background:#ff0000;opacity:0.7;cursor:pointer;"></div>
+        <div class="threshold-line" data-level="Critical: 130cm" style="position:absolute;left:<?=$critical_pct?>%;top:0;bottom:0;width:1px;background:#ff0000;opacity:0.7;cursor:pointer;"></div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:.7rem;">
         <span style="color:#fff;font-weight:700;"><?=$lv?round($lv).' cm':'No data'?></span>
@@ -362,11 +362,11 @@ function updateSensorReadingsDisplay(data) {
           <div style="background:rgba(0,0,0,.4);height:12px;margin-bottom:8px;overflow:hidden;position:relative;">
             <div style="width:${pct}%;height:100%;background:${col};box-shadow:0 0 8px ${col}44;"></div>
             <!-- Warning threshold line (70cm) -->
-            <div class="threshold-line" data-level="70cm" style="position:absolute;left:${warning_pct}%;top:0;bottom:0;width:1px;background:#ffff00;opacity:0.7;cursor:pointer;"></div>
+            <div class="threshold-line" data-level="Warning: 70cm" style="position:absolute;left:${warning_pct}%;top:0;bottom:0;width:1px;background:#ffff00;opacity:0.7;cursor:pointer;"></div>
             <!-- Danger threshold line (100cm) -->
-            <div class="threshold-line" data-level="100cm" style="position:absolute;left:${danger_pct}%;top:0;bottom:0;width:1px;background:#ff8c00;opacity:0.7;cursor:pointer;"></div>
+            <div class="threshold-line" data-level="Danger: 100cm" style="position:absolute;left:${danger_pct}%;top:0;bottom:0;width:1px;background:#ff8c00;opacity:0.7;cursor:pointer;"></div>
             <!-- Critical threshold line (130cm) -->
-            <div class="threshold-line" data-level="130cm" style="position:absolute;left:${critical_pct}%;top:0;bottom:0;width:1px;background:#ff0000;opacity:0.7;cursor:pointer;"></div>
+            <div class="threshold-line" data-level="Critical: 130cm" style="position:absolute;left:${critical_pct}%;top:0;bottom:0;width:1px;background:#ff0000;opacity:0.7;cursor:pointer;"></div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:.7rem;">
             <span style="color:#fff;font-weight:700;">${lv ? Math.round(lv) + ' cm' : 'No data'}</span>
