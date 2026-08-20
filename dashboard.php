@@ -92,12 +92,22 @@ include __DIR__ . '/includes/header.php';
         $st=$r['alert_status']??'safe';
         $pct=min(100,($lv/160)*100);
         $col=$ac[$st]??'#00ff00';
+        // Threshold positions (max 160cm)
+        $warning_pct = (70/160)*100;  // 43.75%
+        $danger_pct = (100/160)*100;  // 62.5%
+        $critical_pct = (130/160)*100; // 81.25%
     ?>
     <div style="background:var(--panel2);border:1px solid var(--border);border-left:3px solid <?=$col?>;padding:14px;">
       <div style="font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;"><?=htmlspecialchars($r['sensor_code'])?></div>
       <div style="font-family:var(--font-head);font-size:.9rem;font-weight:600;color:#fff;margin-bottom:8px;"><?=htmlspecialchars($r['purok'])?></div>
-      <div style="background:rgba(0,0,0,.4);height:12px;margin-bottom:8px;overflow:hidden;">
+      <div style="background:rgba(0,0,0,.4);height:12px;margin-bottom:8px;overflow:hidden;position:relative;">
         <div style="width:<?=$pct?>%;height:100%;background:<?=$col?>;box-shadow:0 0 8px <?=$col?>44;"></div>
+        <!-- Warning threshold line (70cm) -->
+        <div style="position:absolute;left:<?=$warning_pct?>%;top:0;bottom:0;width:1px;background:#ffff00;opacity:0.7;"></div>
+        <!-- Danger threshold line (100cm) -->
+        <div style="position:absolute;left:<?=$danger_pct?>%;top:0;bottom:0;width:1px;background:#ff8c00;opacity:0.7;"></div>
+        <!-- Critical threshold line (130cm) -->
+        <div style="position:absolute;left:<?=$critical_pct?>%;top:0;bottom:0;width:1px;background:#ff0000;opacity:0.7;"></div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:.7rem;">
         <span style="color:#fff;font-weight:700;"><?=$lv?round($lv).' cm':'No data'?></span>
@@ -330,6 +340,10 @@ function updateSensorReadingsDisplay(data) {
   if (!sensorContainer) return;
   
   const ac = {safe:'#00ff00',warning:'#ffff00',danger:'#ff8c00',critical:'#ff0000'};
+  // Threshold positions (max 160cm)
+  const warning_pct = (70/160)*100;  // 43.75%
+  const danger_pct = (100/160)*100;  // 62.5%
+  const critical_pct = (130/160)*100; // 81.25%
   let html = '';
   
   if (data.length === 0) {
@@ -345,8 +359,14 @@ function updateSensorReadingsDisplay(data) {
         <div style="background:var(--panel2);border:1px solid var(--border);border-left:3px solid ${col};padding:14px;">
           <div style="font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">${r.sensor_code}</div>
           <div style="font-family:var(--font-head);font-size:.9rem;font-weight:600;color:#fff;margin-bottom:8px;">${r.purok}</div>
-          <div style="background:rgba(0,0,0,.4);height:12px;margin-bottom:8px;overflow:hidden;">
+          <div style="background:rgba(0,0,0,.4);height:12px;margin-bottom:8px;overflow:hidden;position:relative;">
             <div style="width:${pct}%;height:100%;background:${col};box-shadow:0 0 8px ${col}44;"></div>
+            <!-- Warning threshold line (70cm) -->
+            <div style="position:absolute;left:${warning_pct}%;top:0;bottom:0;width:1px;background:#ffff00;opacity:0.7;"></div>
+            <!-- Danger threshold line (100cm) -->
+            <div style="position:absolute;left:${danger_pct}%;top:0;bottom:0;width:1px;background:#ff8c00;opacity:0.7;"></div>
+            <!-- Critical threshold line (130cm) -->
+            <div style="position:absolute;left:${critical_pct}%;top:0;bottom:0;width:1px;background:#ff0000;opacity:0.7;"></div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:.7rem;">
             <span style="color:#fff;font-weight:700;">${lv ? Math.round(lv) + ' cm' : 'No data'}</span>
