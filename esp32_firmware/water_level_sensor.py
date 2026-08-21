@@ -342,21 +342,44 @@ def init_sim800l():
     # ------------------------------------------------
     # 4. Check network registration
     # ------------------------------------------------
-    sim800l.write(b'AT+CREG?\r\n')
-    time.sleep(1)
-
-    registration = sim800l.read()
-    print("Network registration:", registration)
-
-    if registration and (
-        b'+CREG: 0,1' in registration or
-        b'+CREG: 0,5' in registration or
-        b'+CREG: 1,1' in registration or
-        b'+CREG: 1,5' in registration
-    ):
-        print("✓ Network registered")
-    else:
+    # Clear buffer before checking
+    sim800l.read()
+    
+    # Try multiple times to get registration status
+    registered = False
+    for attempt in range(3):
+        sim800l.write(b'AT+CREG?\r\n')
+        time.sleep(2)  # Increased delay for response
+        
+        registration = sim800l.read()
+        print("Network registration (attempt {}):".format(attempt + 1), registration)
+        
+        # Check for various registration status codes
+        # 0,1 = Registered to home network
+        # 0,5 = Registered, roaming
+        # 1,1 = Registered to home network (with location info)
+        # 1,5 = Registered, roaming (with location info)
+        # 2,1 = Registered to home network (automatic registration)
+        # 2,5 = Registered, roaming (automatic registration)
+        if registration and (
+            b'+CREG: 0,1' in registration or
+            b'+CREG: 0,5' in registration or
+            b'+CREG: 1,1' in registration or
+            b'+CREG: 1,5' in registration or
+            b'+CREG: 2,1' in registration or
+            b'+CREG: 2,5' in registration
+        ):
+            print("✓ Network registered")
+            registered = True
+            break
+        elif registration and b'+CREG:' in registration:
+            # Parse the actual status code for debugging
+            print("Registration status code detected but not matching expected values")
+        time.sleep(1)
+    
+    if not registered:
         print("⚠ SIM detected but not registered yet")
+        print("This may be normal if SIM just powered on. SMS may still work.")
 
     # ------------------------------------------------
     # 5. SMS text mode
