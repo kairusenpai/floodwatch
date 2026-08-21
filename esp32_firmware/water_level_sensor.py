@@ -35,10 +35,11 @@ SEND_INTERVAL = 30000  # milliseconds (send average every 30 seconds)
 
 
 # Calibration
-# Adjusted to map sensor physical range (0-70cm) to larger water level range (0-150cm)
-# Sensor full underwater (~1.5V) now represents ~130cm (critical level)
-MIN_VOLTAGE = 0.5
-MAX_VOLTAGE = 1.6
+# Sensor output: 0 = dry, 600+ = fully submerged
+# Maps analog values to water level in cm (max 150cm)
+# When fully submerged (600+ analog), should read 150cm (max level)
+MIN_ANALOG = 0
+MAX_ANALOG = 600
 MAX_LEVEL_CM = 150
 
 
@@ -57,6 +58,7 @@ GPS_ENABLED = True  # Set to False to disable GPS
 
 
 # Alert Thresholds (cm)
+# Max level is 130cm (fully submerged)
 WARNING_THRESHOLD = 70
 DANGER_THRESHOLD = 100
 CRITICAL_THRESHOLD = 130

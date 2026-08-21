@@ -90,12 +90,12 @@ include __DIR__ . '/includes/header.php';
       while($r=$latestReadings->fetch_assoc()):
         $lv=$r['water_level']??0;
         $st=$r['alert_status']??'safe';
-        $pct=min(100,($lv/160)*100);
+        $pct=min(100,($lv/150)*100);
         $col=$ac[$st]??'#00ff00';
-        // Threshold positions (max 160cm)
-        $warning_pct = (70/160)*100;  // 43.75%
-        $danger_pct = (100/160)*100;  // 62.5%
-        $critical_pct = (130/160)*100; // 81.25%
+        // Threshold positions (max 150cm)
+        $warning_pct = (70/150)*100;  // 46.67%
+        $danger_pct = (100/150)*100;  // 66.67%
+        $critical_pct = (130/150)*100; // 86.67%
     ?>
     <div style="background:var(--panel2);border:1px solid var(--border);border-left:3px solid <?=$col?>;padding:14px;">
       <div style="font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;"><?=htmlspecialchars($r['sensor_code'])?></div>
@@ -340,10 +340,10 @@ function updateSensorReadingsDisplay(data) {
   if (!sensorContainer) return;
   
   const ac = {safe:'#00ff00',warning:'#ffff00',danger:'#ff8c00',critical:'#ff0000'};
-  // Threshold positions (max 160cm)
-  const warning_pct = (70/160)*100;  // 43.75%
-  const danger_pct = (100/160)*100;  // 62.5%
-  const critical_pct = (130/160)*100; // 81.25%
+  // Threshold positions (max 150cm)
+  const warning_pct = (70/150)*100;  // 46.67%
+  const danger_pct = (100/150)*100;  // 66.67%
+  const critical_pct = (130/150)*100; // 86.67%
   let html = '';
   
   if (data.length === 0) {
@@ -352,7 +352,7 @@ function updateSensorReadingsDisplay(data) {
     data.forEach(r => {
       const lv = r.water_level || 0;
       const st = r.alert_status || 'safe';
-      const pct = Math.min(100, (lv / 160) * 100);
+      const pct = Math.min(100, (lv / 150) * 100);
       const col = ac[st] || '#00ff00';
       
       html += `
