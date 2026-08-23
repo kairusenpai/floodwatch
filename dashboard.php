@@ -9,20 +9,28 @@ $activePage = 'dashboard';
 // Readings older than this are flagged stale rather than treated as current.
 define('STALE_THRESHOLD_SECONDS', 3600); // 1 hour
 
+// Explicit PH-time "now", computed in PHP rather than relying on the
+// database's NOW(). recorded_at is stored as a literal PH-local
+// wall-clock string (the ESP32 already converts to PH time before
+// sending). If the DB session's own NOW() is in UTC (common on managed
+// hosts), comparing recorded_at <= NOW() would wrongly exclude today's
+// real readings — since PH-local numbers are always ~8h "ahead" of UTC
+// numbers — and fall back to an old/corrupted row instead. Computing
+// the cutoff here in the same PH-local frame as the stored data avoids
+// that mismatch entirely.
+$phNowForFilter = (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
+$phNowEscaped = $conn->real_escape_string($phNowForFilter);
+
 // ── Stats ─────────────────────────────────────────────────────
 $totalSensors    = $conn->query("SELECT COUNT(*) c FROM sensors")->fetch_assoc()['c'];
 $onlineSensors   = $conn->query("SELECT COUNT(*) c FROM sensors WHERE status='online'")->fetch_assoc()['c'];
 $activeAlerts    = $conn->query("SELECT COUNT(*) c FROM flood_alerts WHERE is_resolved=0")->fetch_assoc()['c'];
 $totalHouseholds = $conn->query("SELECT COUNT(*) c FROM households")->fetch_assoc()['c'];
 
-// NOTE: "AND recorded_at <= NOW()" guards against leftover rows written
-// before the recorded_at column type was fixed (TIMESTAMP -> DATETIME).
-// Those old rows are permanently stored with a corrupted future-looking
-// timestamp and would otherwise be picked as "latest" by ORDER BY
-// recorded_at DESC even though a real, correctly-timed reading came in
-// more recently. Excluding future timestamps makes the "latest reading"
-// picker immune to that leftover bad data without needing to touch the
-// old rows themselves.
+// NOTE: "recorded_at <= '$phNowEscaped'" guards against leftover rows
+// written before the recorded_at column type was fixed
+// (TIMESTAMP -> DATETIME). Uses the PHP-computed PH-time cutoff above,
+// not the DB's NOW(), to avoid a session-timezone mismatch.
 $latestReadings = $conn->query("
     SELECT s.id as sensor_id, s.sensor_code, p.name as purok,
            sr.water_level, sr.alert_status, sr.recorded_at
@@ -32,7 +40,7 @@ $latestReadings = $conn->query("
         SELECT sensor_id, water_level, alert_status, recorded_at,
                ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC, id DESC) as rn
         FROM sensor_readings
-        WHERE recorded_at <= NOW()
+        WHERE recorded_at <= '$phNowEscaped'
     ) sr ON sr.sensor_id = s.id AND sr.rn = 1
     ORDER BY s.id");
 
@@ -255,8 +263,7 @@ include __DIR__ . '/includes/header.php';
 <script>
 const SENSORS_DATA = <?php
 $mapSensors = [];
-// Same future-timestamp guard as $latestReadings above, so a corrupted
-// old row can't outrank a real current reading on the map either.
+// Same PH-time cutoff as $latestReadings above.
 $sRes = $conn->query("
     SELECT s.id, s.sensor_code, s.latitude, s.longitude, p.id as purok_id, p.name as purok,
            sr.water_level, sr.alert_status
@@ -265,7 +272,7 @@ $sRes = $conn->query("
         SELECT sensor_id, water_level, alert_status, recorded_at,
                ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC, id DESC) as rn
         FROM sensor_readings
-        WHERE recorded_at <= NOW()
+        WHERE recorded_at <= '$phNowEscaped'
     ) sr ON sr.sensor_id=s.id AND sr.rn=1
     ORDER BY s.id");
 while($sr=$sRes->fetch_assoc()){
