@@ -15,6 +15,14 @@ $onlineSensors   = $conn->query("SELECT COUNT(*) c FROM sensors WHERE status='on
 $activeAlerts    = $conn->query("SELECT COUNT(*) c FROM flood_alerts WHERE is_resolved=0")->fetch_assoc()['c'];
 $totalHouseholds = $conn->query("SELECT COUNT(*) c FROM households")->fetch_assoc()['c'];
 
+// NOTE: "AND recorded_at <= NOW()" guards against leftover rows written
+// before the recorded_at column type was fixed (TIMESTAMP -> DATETIME).
+// Those old rows are permanently stored with a corrupted future-looking
+// timestamp and would otherwise be picked as "latest" by ORDER BY
+// recorded_at DESC even though a real, correctly-timed reading came in
+// more recently. Excluding future timestamps makes the "latest reading"
+// picker immune to that leftover bad data without needing to touch the
+// old rows themselves.
 $latestReadings = $conn->query("
     SELECT s.id as sensor_id, s.sensor_code, p.name as purok,
            sr.water_level, sr.alert_status, sr.recorded_at
@@ -24,6 +32,7 @@ $latestReadings = $conn->query("
         SELECT sensor_id, water_level, alert_status, recorded_at,
                ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC, id DESC) as rn
         FROM sensor_readings
+        WHERE recorded_at <= NOW()
     ) sr ON sr.sensor_id = s.id AND sr.rn = 1
     ORDER BY s.id");
 
@@ -246,6 +255,8 @@ include __DIR__ . '/includes/header.php';
 <script>
 const SENSORS_DATA = <?php
 $mapSensors = [];
+// Same future-timestamp guard as $latestReadings above, so a corrupted
+// old row can't outrank a real current reading on the map either.
 $sRes = $conn->query("
     SELECT s.id, s.sensor_code, s.latitude, s.longitude, p.id as purok_id, p.name as purok,
            sr.water_level, sr.alert_status
@@ -254,6 +265,7 @@ $sRes = $conn->query("
         SELECT sensor_id, water_level, alert_status, recorded_at,
                ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC, id DESC) as rn
         FROM sensor_readings
+        WHERE recorded_at <= NOW()
     ) sr ON sr.sensor_id=s.id AND sr.rn=1
     ORDER BY s.id");
 while($sr=$sRes->fetch_assoc()){
