@@ -22,7 +22,8 @@ WIFI_PASSWORD = "60141936"
 
 
 # FloodWatch Server Configuration
-SERVER_URL = "https://floodwatchews.infinityfreeapp.com/floodwatch/"
+# NOTE: no trailing slash here, and API_ENDPOINT/paths below start with "/"
+SERVER_URL = "https://floodwatchews.infinityfreeapp.com/floodwatch"
 API_ENDPOINT = "/api/sensor_data.php"
 
 
@@ -34,7 +35,7 @@ READING_INTERVAL = 1000  # milliseconds (read every 1 second)
 SEND_INTERVAL = 30000  # milliseconds (send average every 30 seconds)
 
 
-# Calibration
+# Calibration (raw ADC counts, no voltage conversion needed)
 # Sensor output: 0 = dry, 600+ = fully submerged
 # Maps analog values to water level in cm (max 150cm)
 # When fully submerged (600+ analog), should read 150cm (max level)
@@ -58,7 +59,7 @@ GPS_ENABLED = True  # Set to False to disable GPS
 
 
 # Alert Thresholds (cm)
-# Max level is 130cm (fully submerged)
+# Max level is 150cm (fully submerged, see MAX_LEVEL_CM above)
 WARNING_THRESHOLD = 70
 DANGER_THRESHOLD = 100
 CRITICAL_THRESHOLD = 130
@@ -147,7 +148,7 @@ def init_gps():
     # Clear any pending data
     gps_uart.read()
     
-    print("✓ GPS UART initialized")
+    print("GPS UART initialized")
     return True
 
 
@@ -251,7 +252,7 @@ def read_gps():
                 result = parse_nmea_sentence(sentence)
                 if result:
                     gps_data = result
-                    print(f"GPS: {result['lat']:.6f}, {result['lng']:.6f}")
+                    print("GPS: {:.6f}, {:.6f}".format(result['lat'], result['lng']))
         
         return gps_data
     
@@ -284,10 +285,10 @@ def init_sim800l():
     response = sim800l.read()
 
     if not response or b'OK' not in response:
-        print("✗ SIM800L not responding")
+        print("SIM800L not responding")
         return False
 
-    print("✓ SIM800L detected")
+    print("SIM800L detected")
 
     # ------------------------------------------------
     # 2. Check SIM card
@@ -299,26 +300,20 @@ def init_sim800l():
     print("SIM status:", response)
 
     if response and b'+CPIN: READY' in response:
-        print("✓ SIM card detected and ready")
+        print("SIM card detected and ready")
 
     elif response and b'+CPIN: SIM PIN' in response:
-        print("SIM requires PIN")
-
-        # Only use this if you KNOW your SIM PIN
-        print("Attempting SIM PIN...")
-
-        sim800l.write(b'AT+CPIN="1234"\r\n')
-        time.sleep(3)
-
-        pin_response = sim800l.read()
-        print("PIN response:", pin_response)
-
-        if not pin_response or b'OK' not in pin_response:
-            print("✗ SIM PIN failed")
-            return False
+        # NOTE: sending a guessed PIN automatically is risky — most SIMs
+        # lock after 3 wrong attempts and then need a PUK to unlock.
+        # This only proceeds if you have explicitly confirmed the PIN
+        # below is correct for your SIM. If you don't use a PIN-locked
+        # SIM, leave this branch alone; it just logs and fails safe.
+        print("SIM requires PIN — skipping auto-unlock for safety.")
+        print("Set the correct PIN manually below if this SIM needs one.")
+        return False
 
     else:
-        print("✗ SIM card not detected")
+        print("SIM card not detected")
 
         # Try ICCID for confirmation
         sim800l.write(b'AT+CCID\r\n')
@@ -328,7 +323,7 @@ def init_sim800l():
         print("ICCID:", iccid)
 
         if not iccid or b'OK' not in iccid:
-            print("✗ SIM card cannot be read")
+            print("SIM card cannot be read")
             print("Check SIM card insertion, SIM holder, and power.")
             return False
 
@@ -371,7 +366,7 @@ def init_sim800l():
             b'+CREG: 2,1' in registration or
             b'+CREG: 2,5' in registration
         ):
-            print("✓ Network registered")
+            print("Network registered")
             registered = True
             break
         elif registration and b'+CREG:' in registration:
@@ -380,7 +375,7 @@ def init_sim800l():
         time.sleep(1)
     
     if not registered:
-        print("⚠ SIM detected but not registered yet")
+        print("SIM detected but not registered yet")
         print("This may be normal if SIM just powered on. SMS may still work.")
 
     # ------------------------------------------------
@@ -419,15 +414,21 @@ def send_sms(phone_number, message):
         sim800l.write(cmd.encode())
         
         # Wait for ">" prompt (max 5 seconds)
+        got_prompt = False
         for i in range(10):
             time.sleep(0.5)
             response = sim800l.read()
             if response and b'>' in response:
                 print("Got > prompt, sending message")
+                got_prompt = True
                 break
             elif response and b'ERROR' in response:
                 print("ERROR from SIM800L:", response)
                 return False
+        
+        if not got_prompt:
+            print("Never got > prompt, aborting SMS")
+            return False
         
         # Send message
         sim800l.write(message.encode())
@@ -439,10 +440,10 @@ def send_sms(phone_number, message):
         print("SMS response:", response)
         
         if response and (b'OK' in response or b'+CMGS:' in response):
-            print("✓ SMS sent to:", phone_number)
+            print("SMS sent to:", phone_number)
             return True
         else:
-            print("✗ SMS failed to:", phone_number)
+            print("SMS failed to:", phone_number)
             print("Response was:", response)
             return False
             
@@ -475,7 +476,8 @@ def get_household_numbers():
                         number = "+63" + number
                     household_numbers.append(number)
                 
-                print("✓ Loaded", len(household_numbers), "household numbers")
+                print("Loaded", len(household_numbers), "household numbers")
+                response.close()
                 return True
             else:
                 print("Server error:", result.get("message"))
@@ -505,7 +507,7 @@ def send_alert_sms(water_level, alert_level):
     
     message = messages.get(alert_level, messages['warning'])
     
-    print(f"\n=== SENDING {alert_level.upper()} ALERT SMS ===")
+    print("\n=== SENDING {} ALERT SMS ===".format(alert_level.upper()))
     print("Message:", message)
     print("Recipients:", len(household_numbers))
     
@@ -515,7 +517,7 @@ def send_alert_sms(water_level, alert_level):
             sent += 1
         time.sleep(2)  # Delay between SMS to avoid overload
     
-    print(f"SMS Alert Complete: {sent}/{len(household_numbers)} sent")
+    print("SMS Alert Complete: {}/{} sent".format(sent, len(household_numbers)))
     print("=" * 40)
 
 
@@ -575,25 +577,21 @@ def get_timestamp():
 # ============================================================
 
 def read_water_level():
-    # Oversampling: take 5 samples and average them
+    # Oversampling: take 5 samples and average them (raw ADC counts)
     samples = []
     for _ in range(5):
         samples.append(sensor.read())
         time.sleep(0.01)
     analog_value = sum(samples) / len(samples)
 
-    voltage = (analog_value / 4095) * 3.3
-
-
     water_level = 0
 
-
-    if voltage > MIN_VOLTAGE:
+    if analog_value > MIN_ANALOG:
 
         water_level = (
-            (voltage - MIN_VOLTAGE)
+            (analog_value - MIN_ANALOG)
             /
-            (MAX_VOLTAGE - MIN_VOLTAGE)
+            (MAX_ANALOG - MIN_ANALOG)
         ) * MAX_LEVEL_CM
 
 
@@ -608,15 +606,13 @@ def read_water_level():
     print(
         "Raw:",
         analog_value,
-        "| Voltage:",
-        round(voltage,2),
-        "V | Level:",
-        round(water_level,1),
+        "| Level:",
+        round(water_level, 1),
         "cm"
     )
 
 
-    return round(water_level,1)
+    return round(water_level, 1)
 
 
 
@@ -674,13 +670,13 @@ def send_sensor_data(water_level):
             print(result)
         except Exception as e:
             print("JSON parse error:", e)
-            print("Using fallback - assuming success if HTTP 200")
-            result = {"status": "success"}
+            print("Treating unparseable response as a failure")
+            result = {"status": "error", "message": "unparseable response"}
 
 
         if result.get("status") == "success":
 
-            print("✓ Data sent successfully")
+            print("Data sent successfully")
 
 
             if "data" in result:
@@ -792,7 +788,7 @@ while True:
         # Add to buffer for averaging
         readings_buffer.append(level)
         
-        # Keep buffer size manageable (max 100 readings for better accuracy)
+        # Keep buffer size manageable
         if len(readings_buffer) > 100:
             readings_buffer.pop(0)
 
@@ -819,12 +815,12 @@ while True:
                 filtered_buffer.sort()
                 median_level = filtered_buffer[len(filtered_buffer) // 2]
                 avg_level = round(median_level, 1)
-                print(f"Filtered {len(readings_buffer) - len(filtered_buffer)} outliers")
-                print(f"Median of {len(filtered_buffer)} readings: {avg_level} cm")
+                print("Filtered {} outliers".format(len(readings_buffer) - len(filtered_buffer)))
+                print("Median of {} readings: {} cm".format(len(filtered_buffer), avg_level))
             else:
                 # Fallback to mean if all readings were filtered
                 avg_level = round(mean_level, 1)
-                print(f"Mean of {len(readings_buffer)} readings: {avg_level} cm")
+                print("Mean of {} readings: {} cm".format(len(readings_buffer), avg_level))
             
             send_sensor_data(avg_level)
             

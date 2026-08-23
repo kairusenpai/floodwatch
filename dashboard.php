@@ -6,6 +6,9 @@ requireLogin();
 $pageTitle  = 'Dashboard';
 $activePage = 'dashboard';
 
+// Readings older than this are flagged stale rather than treated as current.
+define('STALE_THRESHOLD_SECONDS', 3600); // 1 hour
+
 // ── Stats ─────────────────────────────────────────────────────
 $totalSensors    = $conn->query("SELECT COUNT(*) c FROM sensors")->fetch_assoc()['c'];
 $onlineSensors   = $conn->query("SELECT COUNT(*) c FROM sensors WHERE status='online'")->fetch_assoc()['c'];
@@ -19,7 +22,7 @@ $latestReadings = $conn->query("
     JOIN puroks p ON s.purok_id = p.id
     LEFT JOIN (
         SELECT sensor_id, water_level, alert_status, recorded_at,
-               ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC) as rn
+               ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC, id DESC) as rn
         FROM sensor_readings
     ) sr ON sr.sensor_id = s.id AND sr.rn = 1
     ORDER BY s.id");
@@ -88,17 +91,24 @@ include __DIR__ . '/includes/header.php';
     $ac=['safe'=>'#00ff00','warning'=>'#ffff00','danger'=>'#ff8c00','critical'=>'#ff0000'];
     if($latestReadings&&$latestReadings->num_rows>0):
       while($r=$latestReadings->fetch_assoc()):
+        $hasReading = $r['recorded_at'] !== null;
         $lv=$r['water_level']??0;
         $st=$r['alert_status']??'safe';
         $pct=min(100,($lv/150)*100);
         $col=$ac[$st]??'#00ff00';
+        $isStale = !$hasReading || (time() - strtotime($r['recorded_at'])) > STALE_THRESHOLD_SECONDS;
         // Threshold positions (max 150cm)
         $warning_pct = (70/150)*100;  // 46.67%
         $danger_pct = (100/150)*100;  // 66.67%
         $critical_pct = (130/150)*100; // 86.67%
     ?>
-    <div style="background:var(--panel2);border:1px solid var(--border);border-left:3px solid <?=$col?>;padding:14px;">
-      <div style="font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;"><?=htmlspecialchars($r['sensor_code'])?></div>
+    <div class="sensor-card" style="background:var(--panel2);border:1px solid var(--border);border-left:3px solid <?=$col?>;padding:14px;<?=$isStale?'opacity:.55;':''?>">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;"><?=htmlspecialchars($r['sensor_code'])?></div>
+        <?php if($isStale): ?>
+        <span style="font-size:.55rem;padding:2px 6px;text-transform:uppercase;background:#ff660022;color:#ff9933;white-space:nowrap;">⚠ Stale</span>
+        <?php endif; ?>
+      </div>
       <div style="font-family:var(--font-head);font-size:.9rem;font-weight:600;color:#fff;margin-bottom:8px;"><?=htmlspecialchars($r['purok'])?></div>
       <div style="background:rgba(0,0,0,.4);height:12px;margin-bottom:8px;overflow:hidden;position:relative;">
         <div style="width:<?=$pct?>%;height:100%;background:<?=$col?>;box-shadow:0 0 8px <?=$col?>44;"></div>
@@ -110,7 +120,7 @@ include __DIR__ . '/includes/header.php';
         <div class="threshold-line" data-level="Critical: 130cm" style="position:absolute;left:<?=$critical_pct?>%;top:0;bottom:0;width:1px;background:#ff0000;opacity:0.7;cursor:pointer;"></div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:.7rem;">
-        <span style="color:#fff;font-weight:700;"><?=$lv?round($lv).' cm':'No data'?></span>
+        <span style="color:#fff;font-weight:700;"><?=$hasReading?round($lv).' cm':'No data'?></span>
         <span style="font-size:.6rem;padding:2px 6px;text-transform:uppercase;background:<?=$col?>22;color:<?=$col?>;"><?=ucfirst($st)?></span>
       </div>
       <?php if($r['recorded_at']): ?>
@@ -128,6 +138,7 @@ include __DIR__ . '/includes/header.php';
       <div style="display:flex;align-items:center;gap:6px;font-size:.65rem;font-weight:700;"><div style="width:22px;height:3px;background:#ffff00"></div>WARNING 70–100cm</div>
       <div style="display:flex;align-items:center;gap:6px;font-size:.65rem;font-weight:700;"><div style="width:22px;height:3px;background:#ff8c00"></div>DANGER 100–130cm</div>
       <div style="display:flex;align-items:center;gap:6px;font-size:.65rem;font-weight:700;"><div style="width:22px;height:3px;background:#ff0000;box-shadow:0 0 6px #ff0000"></div>CRITICAL &gt;130cm</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:.65rem;font-weight:700;color:#ff9933;">⚠ STALE — no reading in over 1 hour</div>
     </div>
   </div>
 
@@ -240,8 +251,8 @@ $sRes = $conn->query("
            sr.water_level, sr.alert_status
     FROM sensors s JOIN puroks p ON s.purok_id=p.id
     LEFT JOIN (
-        SELECT sensor_id, water_level, alert_status,
-               ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC) as rn
+        SELECT sensor_id, water_level, alert_status, recorded_at,
+               ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC, id DESC) as rn
         FROM sensor_readings
     ) sr ON sr.sensor_id=s.id AND sr.rn=1
     ORDER BY s.id");
@@ -258,7 +269,7 @@ while($sr=$sRes->fetch_assoc()){
         'lng'     => (float)$lng,
     ];
 }
-echo json_encode($mapSensors);
+echo json_encode($mapSensors, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 ?>;
 
 function getColor(status,level){
@@ -324,6 +335,7 @@ window.addEventListener('resize',()=>map.invalidateSize());
 let sensorCountdown = 30;
 const sensorRefreshEl = document.getElementById('sensor-refresh');
 const sensorContainer = document.getElementById('sensor-readings-container');
+const STALE_THRESHOLD_MS = 3600 * 1000; // 1 hour, matches STALE_THRESHOLD_SECONDS in PHP
 
 function fetchSensorReadings() {
   fetch('api/public_sensor_data.php')
@@ -350,14 +362,23 @@ function updateSensorReadingsDisplay(data) {
     html = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted);font-size:.7rem;">No sensor readings yet.<br><small>Run a simulation or wait for sensors to transmit.</small></div>';
   } else {
     data.forEach(r => {
+      const hasReading = r.recorded_at !== null && r.recorded_at !== undefined;
       const lv = r.water_level || 0;
       const st = r.alert_status || 'safe';
       const pct = Math.min(100, (lv / 150) * 100);
       const col = ac[st] || '#00ff00';
+      // Prefer the server's is_stale flag when present; fall back to
+      // computing it client-side from recorded_at for older API responses.
+      const isStale = typeof r.is_stale === 'boolean'
+        ? r.is_stale
+        : (!hasReading || (Date.now() - new Date(r.recorded_at).getTime()) > STALE_THRESHOLD_MS);
       
       html += `
-        <div style="background:var(--panel2);border:1px solid var(--border);border-left:3px solid ${col};padding:14px;">
-          <div style="font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">${r.sensor_code}</div>
+        <div class="sensor-card" style="background:var(--panel2);border:1px solid var(--border);border-left:3px solid ${col};padding:14px;${isStale ? 'opacity:.55;' : ''}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div style="font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">${r.sensor_code || ''}</div>
+            ${isStale ? '<span style="font-size:.55rem;padding:2px 6px;text-transform:uppercase;background:#ff660022;color:#ff9933;white-space:nowrap;">⚠ Stale</span>' : ''}
+          </div>
           <div style="font-family:var(--font-head);font-size:.9rem;font-weight:600;color:#fff;margin-bottom:8px;">${r.purok}</div>
           <div style="background:rgba(0,0,0,.4);height:12px;margin-bottom:8px;overflow:hidden;position:relative;">
             <div style="width:${pct}%;height:100%;background:${col};box-shadow:0 0 8px ${col}44;"></div>
@@ -369,7 +390,7 @@ function updateSensorReadingsDisplay(data) {
             <div class="threshold-line" data-level="Critical: 130cm" style="position:absolute;left:${critical_pct}%;top:0;bottom:0;width:1px;background:#ff0000;opacity:0.7;cursor:pointer;"></div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:.7rem;">
-            <span style="color:#fff;font-weight:700;">${lv ? Math.round(lv) + ' cm' : 'No data'}</span>
+            <span style="color:#fff;font-weight:700;">${hasReading ? Math.round(lv) + ' cm' : 'No data'}</span>
             <span style="font-size:.6rem;padding:2px 6px;text-transform:uppercase;background:${col}22;color:${col};">${st.charAt(0).toUpperCase() + st.slice(1)}</span>
           </div>
           ${r.recorded_at ? `<div style="font-size:.58rem;color:var(--cyan);margin-top:6px;">Device sent: ${new Date(r.recorded_at).toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})}</div>` : ''}
