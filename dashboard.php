@@ -31,7 +31,8 @@ $onlineSensors   = $conn->query("SELECT COUNT(*) c FROM sensors WHERE status='on
 $activeAlerts    = $conn->query("SELECT COUNT(*) c FROM flood_alerts WHERE is_resolved=0")->fetch_assoc()['c'];
 $totalHouseholds = $conn->query("SELECT COUNT(*) c FROM households")->fetch_assoc()['c'];
 
-// NOTE: Removed date filter to show absolute latest readings regardless of timezone
+// NOTE: Filter to show only readings not in the future (based on PH time)
+// This prevents displaying corrupted future timestamps
 $latestReadings = $conn->query("
     SELECT s.id as sensor_id, s.sensor_code, p.name as purok,
            sr.water_level, sr.alert_status, sr.recorded_at
@@ -41,6 +42,7 @@ $latestReadings = $conn->query("
         SELECT sensor_id, water_level, alert_status, recorded_at,
                ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC, id DESC) as rn
         FROM sensor_readings
+        WHERE recorded_at <= '$phNowEscaped'
     ) sr ON sr.sensor_id = s.id AND sr.rn = 1
     ORDER BY s.id");
 

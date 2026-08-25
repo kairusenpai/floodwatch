@@ -13,6 +13,10 @@ if (isLoggedIn()) {
 $loginError = '';
 
 // ── Fetch public sensor data ─────────────────────────────────────
+// Get current PH time to filter out future timestamps
+$phNow = (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
+$phNowEscaped = $conn->real_escape_string($phNow);
+
 $publicSensors = $conn->query("
     SELECT s.id, s.sensor_code, s.purok_id, p.name as purok,
            sr.water_level, sr.alert_status, sr.recorded_at
@@ -22,6 +26,7 @@ $publicSensors = $conn->query("
         SELECT sensor_id, water_level, alert_status, recorded_at,
                ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC, id DESC) as rn
         FROM sensor_readings
+        WHERE recorded_at <= '$phNowEscaped'
     ) sr ON sr.sensor_id = s.id AND sr.rn = 1
     WHERE s.status = 'online'
     ORDER BY p.id
@@ -291,9 +296,8 @@ function getPublicStatus(status) {
 function formatTime(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
-  // Convert to PH time (UTC+8)
-  const phTime = new Date(d.getTime() + (8 * 60 * 60 * 1000) + (d.getTimezoneOffset() * 60 * 1000));
-  return phTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  // Database already stores in PH time, no conversion needed
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 function updateSensorDisplay(data) {

@@ -9,10 +9,18 @@ header('Access-Control-Allow-Origin: *');
 
 require_once '../includes/config.php';
 
+// Set timezone to Asia/Manila for PH time
+date_default_timezone_set('Asia/Manila');
+
+// Get current PH time to filter out future timestamps
+$phNow = (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
+$phNowEscaped = $conn->real_escape_string($phNow);
+
 // Fetch public sensor data — every registered sensor, not just those
 // currently marked 'online', so a sensor that goes silent mid-event
 // still shows its last known reading (flagged stale) instead of
 // disappearing from the public view entirely.
+// Filter to show only readings not in the future (based on PH time)
 $publicSensors = $conn->query("
     SELECT s.id, s.sensor_code, s.purok_id, p.name as purok,
            sr.water_level, sr.alert_status, sr.recorded_at
@@ -22,6 +30,7 @@ $publicSensors = $conn->query("
         SELECT sensor_id, water_level, alert_status, recorded_at,
                ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC, id DESC) as rn
         FROM sensor_readings
+        WHERE recorded_at <= '$phNowEscaped'
     ) sr ON sr.sensor_id = s.id AND sr.rn = 1
     ORDER BY p.id
 ");
