@@ -13,15 +13,6 @@ require_once '../includes/config.php';
 // currently marked 'online', so a sensor that goes silent mid-event
 // still shows its last known reading (flagged stale) instead of
 // disappearing from the public view entirely.
-//
-// "AND recorded_at <= NOW()" guards against leftover rows written
-// before the recorded_at column type was fixed (TIMESTAMP -> DATETIME).
-// Those old rows are permanently stored with a corrupted future-looking
-// timestamp and would otherwise be picked as "latest" by
-// ORDER BY recorded_at DESC even though a real, correctly-timed reading
-// came in more recently. Excluding future timestamps makes the "latest
-// reading" picker immune to that leftover bad data without needing to
-// touch the old rows themselves.
 $publicSensors = $conn->query("
     SELECT s.id, s.sensor_code, s.purok_id, p.name as purok,
            sr.water_level, sr.alert_status, sr.recorded_at
@@ -31,7 +22,6 @@ $publicSensors = $conn->query("
         SELECT sensor_id, water_level, alert_status, recorded_at,
                ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC, id DESC) as rn
         FROM sensor_readings
-        WHERE recorded_at <= NOW()
     ) sr ON sr.sensor_id = s.id AND sr.rn = 1
     ORDER BY p.id
 ");

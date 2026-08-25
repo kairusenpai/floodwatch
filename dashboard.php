@@ -360,11 +360,16 @@ function fetchSensorReadings() {
   fetch('api/public_sensor_data.php')
     .then(response => response.json())
     .then(result => {
+      console.log('Sensor data response:', result);
       if (result.status === 'success') {
         updateSensorReadingsDisplay(result.data);
+      } else {
+        console.error('API returned error:', result.message);
       }
     })
-    .catch(err => console.error('Failed to fetch sensor readings:', err));
+    .catch(err => {
+      console.error('Failed to fetch sensor readings:', err);
+    });
 }
 
 function updateSensorReadingsDisplay(data) {
