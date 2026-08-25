@@ -350,8 +350,8 @@ SENSORS_DATA.forEach(s=>{
 
 window.addEventListener('resize',()=>map.invalidateSize());
 
-// Auto-refresh sensor readings every 30 seconds
-let sensorCountdown = 30;
+// Auto-refresh sensor readings every 10 seconds
+let sensorCountdown = 10;
 const sensorRefreshEl = document.getElementById('sensor-refresh');
 const sensorContainer = document.getElementById('sensor-readings-container');
 const STALE_THRESHOLD_MS = 3600 * 1000; // 1 hour, matches STALE_THRESHOLD_SECONDS in PHP
