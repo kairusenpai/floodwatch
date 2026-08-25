@@ -101,7 +101,7 @@ include __DIR__ . '/includes/header.php';
   <div class="card">
     <div class="card-title">
       <span>📡 Sensor Network — Live Readings</span>
-      <span style="font-size:.62rem;color:var(--muted)" id="sensor-refresh">Auto-refreshing in 30s</span>
+      <span style="font-size:.62rem;color:var(--muted)" id="sensor-refresh">Auto-refreshing in 10s</span>
     </div>
     <div id="sensor-readings-container" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
     <?php
@@ -426,7 +426,7 @@ if (sensorRefreshEl && sensorContainer) {
     sensorCountdown--;
     sensorRefreshEl.textContent = `Auto-refreshing in ${sensorCountdown}s`;
     if (sensorCountdown <= 0) {
-      sensorCountdown = 30;
+      sensorCountdown = 10;
       fetchSensorReadings();
     }
   }, 1000);

@@ -16,16 +16,11 @@ $publicSensors = $conn->query("
     FROM sensors s
     JOIN puroks p ON s.purok_id = p.id
     LEFT JOIN (
-        SELECT sensor_id, water_level, alert_status, recorded_at
+        SELECT sensor_id, water_level, alert_status, recorded_at,
+               ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC, id DESC) as rn
         FROM sensor_readings
-        WHERE (sensor_id, recorded_at) IN (
-            SELECT sensor_id, MAX(recorded_at)
-            FROM sensor_readings
-            WHERE DATE(recorded_at) = CURDATE()
-            GROUP BY sensor_id
-        )
-    ) sr ON sr.sensor_id = s.id
-    WHERE s.status = 'online' AND (sr.recorded_at IS NULL OR DATE(sr.recorded_at) = CURDATE())
+    ) sr ON sr.sensor_id = s.id AND sr.rn = 1
+    WHERE s.status = 'online'
     ORDER BY p.id
 ");
 $publicSensorData = [];
@@ -293,7 +288,9 @@ function getPublicStatus(status) {
 function formatTime(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
-  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  // Convert to PH time (UTC+8)
+  const phTime = new Date(d.getTime() + (8 * 60 * 60 * 1000) + (d.getTimezoneOffset() * 60 * 1000));
+  return phTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 function updateSensorDisplay(data) {
