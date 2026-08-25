@@ -417,11 +417,7 @@ function updateSensorReadingsDisplay(data) {
             <span style="color:#fff;font-weight:700;">${hasReading ? Math.round(lv) + ' cm' : 'No data'}</span>
             <span style="font-size:.6rem;padding:2px 6px;text-transform:uppercase;background:${col}22;color:${col};">${st.charAt(0).toUpperCase() + st.slice(1)}</span>
           </div>
-          ${r.recorded_at ? (() => {
-            const d = new Date(r.recorded_at);
-            const phTime = new Date(d.getTime() + (8 * 60 * 60 * 1000) + (d.getTimezoneOffset() * 60 * 1000));
-            return `<div style="font-size:.58rem;color:var(--cyan);margin-top:6px;">Device sent: ${phTime.toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})}</div>`;
-          })() : ''}
+          ${r.recorded_at ? `<div style="font-size:.58rem;color:var(--cyan);margin-top:6px;">Device sent: ${new Date(r.recorded_at).toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})}</div>` : ''}
         </div>
       `;
     });
