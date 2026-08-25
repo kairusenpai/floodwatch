@@ -1,6 +1,10 @@
 <?php
 session_start();
 require_once __DIR__ . '/includes/config.php';
+
+// Set timezone to Asia/Manila for PH time
+date_default_timezone_set('Asia/Manila');
+
 requireLogin();
 
 $pageTitle  = 'Dashboard';
@@ -27,10 +31,7 @@ $onlineSensors   = $conn->query("SELECT COUNT(*) c FROM sensors WHERE status='on
 $activeAlerts    = $conn->query("SELECT COUNT(*) c FROM flood_alerts WHERE is_resolved=0")->fetch_assoc()['c'];
 $totalHouseholds = $conn->query("SELECT COUNT(*) c FROM households")->fetch_assoc()['c'];
 
-// NOTE: "recorded_at <= '$phNowEscaped'" guards against leftover rows
-// written before the recorded_at column type was fixed
-// (TIMESTAMP -> DATETIME). Uses the PHP-computed PH-time cutoff above,
-// not the DB's NOW(), to avoid a session-timezone mismatch.
+// NOTE: Removed date filter to show absolute latest readings regardless of timezone
 $latestReadings = $conn->query("
     SELECT s.id as sensor_id, s.sensor_code, p.name as purok,
            sr.water_level, sr.alert_status, sr.recorded_at
@@ -40,7 +41,6 @@ $latestReadings = $conn->query("
         SELECT sensor_id, water_level, alert_status, recorded_at,
                ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY recorded_at DESC, id DESC) as rn
         FROM sensor_readings
-        WHERE recorded_at <= '$phNowEscaped'
     ) sr ON sr.sensor_id = s.id AND sr.rn = 1
     ORDER BY s.id");
 
@@ -412,7 +412,11 @@ function updateSensorReadingsDisplay(data) {
             <span style="color:#fff;font-weight:700;">${hasReading ? Math.round(lv) + ' cm' : 'No data'}</span>
             <span style="font-size:.6rem;padding:2px 6px;text-transform:uppercase;background:${col}22;color:${col};">${st.charAt(0).toUpperCase() + st.slice(1)}</span>
           </div>
-          ${r.recorded_at ? `<div style="font-size:.58rem;color:var(--cyan);margin-top:6px;">Device sent: ${new Date(r.recorded_at).toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})}</div>` : ''}
+          ${r.recorded_at ? (() => {
+            const d = new Date(r.recorded_at);
+            const phTime = new Date(d.getTime() + (8 * 60 * 60 * 1000) + (d.getTimezoneOffset() * 60 * 1000));
+            return `<div style="font-size:.58rem;color:var(--cyan);margin-top:6px;">Device sent: ${phTime.toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})}</div>`;
+          })() : ''}
         </div>
       `;
     });

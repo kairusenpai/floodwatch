@@ -2,6 +2,9 @@
 session_start();
 require_once __DIR__ . '/includes/config.php';
 
+// Set timezone to Asia/Manila for PH time
+date_default_timezone_set('Asia/Manila');
+
 // Already logged in → redirect to dashboard
 if (isLoggedIn()) {
     redirect('dashboard.php');
