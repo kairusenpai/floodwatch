@@ -449,6 +449,12 @@ def send_sms(phone_number, message):
         # Clear any pending data
         sim800l.read()
         
+        # Set SMS to text mode
+        sim800l_write(b'AT+CMGF=1\r\n')
+        time.sleep(0.5)
+        response = sim800l.read()
+        print("Text mode set:", response)
+        
         # Check if SIM is ready
         sim800l_write(b'AT+CPAS\r\n')
         time.sleep(0.5)
