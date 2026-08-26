@@ -350,14 +350,18 @@ def init_sim800l():
         print("SIM card detected and ready")
 
     elif response and b'+CPIN: SIM PIN' in response:
-        # NOTE: sending a guessed PIN automatically is risky — most SIMs
-        # lock after 3 wrong attempts and then need a PUK to unlock.
-        # This only proceeds if you have explicitly confirmed the PIN
-        # below is correct for your SIM. If you don't use a PIN-locked
-        # SIM, leave this branch alone; it just logs and fails safe.
-        print("SIM requires PIN — skipping auto-unlock for safety.")
-        print("Set the correct PIN manually below if this SIM needs one.")
-        return False
+        # TNT SIM default PIN is 1234
+        print("SIM requires PIN — attempting auto-unlock with TNT default PIN 1234")
+        sim800l_write(b'AT+CPIN=1234\r\n')
+        time.sleep(2)
+        response = sim800l.read()
+        print("PIN unlock response:", response)
+        
+        if response and b'+CPIN: READY' in response:
+            print("SIM unlocked successfully")
+        else:
+            print("Failed to unlock SIM. Check if PIN is correct.")
+            return False
 
     else:
         print("SIM card not detected")
