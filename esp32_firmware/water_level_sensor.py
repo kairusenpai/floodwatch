@@ -17,13 +17,12 @@ from machine import ADC, Pin, UART
 # ============================================================
 
 # WiFi Credentials
-WIFI_SSID = "YOTC-D71737"
-WIFI_PASSWORD = "60141936"
+WIFI_SSID = "iosios"
+WIFI_PASSWORD = "chelsemae25"
 
 
 # FloodWatch Server Configuration
-# NOTE: no trailing slash here, and API_ENDPOINT/paths below start with "/"
-SERVER_URL = "https://floodwatchews.infinityfreeapp.com/floodwatch"
+SERVER_URL = "https://floodwatch-zm0j.onrender.com/"
 API_ENDPOINT = "/api/sensor_data.php"
 
 
@@ -35,12 +34,21 @@ READING_INTERVAL = 1000  # milliseconds (read every 1 second)
 SEND_INTERVAL = 30000  # milliseconds (send average every 30 seconds)
 
 
-# Calibration (raw ADC counts, no voltage conversion needed)
-# Sensor output: 0 = dry, 600+ = fully submerged
-# Maps analog values to water level in cm (max 150cm)
-# When fully submerged (600+ analog), should read 150cm (max level)
+# Calibration (raw ADC counts)
+# RECALIBRATED based on field data logged 2026-08-23 — the previous
+# MAX_ANALOG of 600 was far too low. Raw readings during real testing
+# regularly reached 700-1930 even at roughly half submersion, which
+# meant the level calculation clamped to MAX_LEVEL_CM (150cm /
+# CRITICAL) almost immediately, well before the probe was actually
+# near full depth.
+#
+# 1900 below is an estimate from the highest observed raw values in
+# that log, on the assumption those moments were close to full
+# submersion. VERIFY THIS on your actual hardware: submerge the probe
+# to known depths (0%, 50%, 100% of its length) and note the printed
+# "Raw:" value at each point, then set MIN_ANALOG/MAX_ANALOG to match.
 MIN_ANALOG = 0
-MAX_ANALOG = 600
+MAX_ANALOG = 2300
 MAX_LEVEL_CM = 150
 
 
@@ -65,16 +73,43 @@ DANGER_THRESHOLD = 100
 CRITICAL_THRESHOLD = 130
 
 
+# Time sync configuration
+NTP_MAX_ATTEMPTS = 5       # attempts at boot before giving up
+NTP_RETRY_DELAY = 3        # seconds between boot attempts
+NTP_RESYNC_INTERVAL = 300000  # 5 min, ms — retry in main loop if still unsynced
+MIN_PLAUSIBLE_YEAR = 2024  # ESP32 RTC defaults to year 2000 if never synced
+
+
+# SIM800L noise guard: GSM transmit bursts (AT commands, SMS sending)
+# are a known EMI source for nearby analog circuits. Every SIM800L
+# write is timestamped, and a water-level reading is skipped if one
+# happened within this many milliseconds beforehand.
+SIM800L_QUIET_MS = 500
+
+# Cross-send smoothing (EMA): blends each new 30s median with the
+# previously sent value, so one noisy 30s block can't look like a
+# sudden level change on its own. new_level gets ALPHA weight and the
+# previous smoothed value gets (1-ALPHA); higher ALPHA = faster
+# response to real changes but less smoothing. Set SMOOTHING_ENABLED
+# to False to send the raw per-send median unchanged.
+SMOOTHING_ENABLED = True
+SMOOTHING_ALPHA = 0.7
+
+
 # ============================================================
 # GLOBAL VARIABLES
 # ============================================================
 
 last_reading_time = 0
 last_send_time = 0
+last_time_sync_attempt = 0
+time_synced = False
 last_alert_level = None  # Track last alert level to avoid duplicate SMS
 household_numbers = []  # Cache household phone numbers
 gps_data = {'lat': None, 'lng': None, 'fix': False}  # GPS coordinates
 readings_buffer = []  # Buffer to store readings for averaging
+last_sim800l_activity_ms = -SIM800L_QUIET_MS  # ms timestamp of last SIM800L TX, so boot doesn't wait
+smoothed_level = None  # Cross-send EMA state, None until the first send
 
 
 # ESP32 ADC
@@ -87,6 +122,18 @@ sensor.width(ADC.WIDTH_12BIT)    # 0-4095
 if SMS_ENABLED:
     sim800l = UART(2, SIM800L_BAUDRATE, tx=Pin(SIM800L_TX_PIN), rx=Pin(SIM800L_RX_PIN))
     sim800l.init(SIM800L_BAUDRATE, bits=8, parity=None, stop=1)
+
+
+def sim800l_write(data):
+    """
+    Wraps sim800l.write() so every SIM800L transmit is timestamped.
+    The main loop checks this timestamp before taking a water-level
+    reading, to avoid reading during the settling window right after
+    GSM TX activity.
+    """
+    global last_sim800l_activity_ms
+    sim800l.write(data)
+    last_sim800l_activity_ms = time.ticks_ms()
 
 
 # GPS UART
@@ -279,7 +326,7 @@ def init_sim800l():
     # ------------------------------------------------
     # 1. Check SIM800L communication
     # ------------------------------------------------
-    sim800l.write(b'AT\r\n')
+    sim800l_write(b'AT\r\n')
     time.sleep(1)
 
     response = sim800l.read()
@@ -293,7 +340,7 @@ def init_sim800l():
     # ------------------------------------------------
     # 2. Check SIM card
     # ------------------------------------------------
-    sim800l.write(b'AT+CPIN?\r\n')
+    sim800l_write(b'AT+CPIN?\r\n')
     time.sleep(1)
 
     response = sim800l.read()
@@ -316,7 +363,7 @@ def init_sim800l():
         print("SIM card not detected")
 
         # Try ICCID for confirmation
-        sim800l.write(b'AT+CCID\r\n')
+        sim800l_write(b'AT+CCID\r\n')
         time.sleep(1)
 
         iccid = sim800l.read()
@@ -330,7 +377,7 @@ def init_sim800l():
     # ------------------------------------------------
     # 3. Check signal
     # ------------------------------------------------
-    sim800l.write(b'AT+CSQ\r\n')
+    sim800l_write(b'AT+CSQ\r\n')
     time.sleep(1)
 
     signal = sim800l.read()
@@ -345,7 +392,7 @@ def init_sim800l():
     # Try multiple times to get registration status
     registered = False
     for attempt in range(3):
-        sim800l.write(b'AT+CREG?\r\n')
+        sim800l_write(b'AT+CREG?\r\n')
         time.sleep(2)  # Increased delay for response
         
         registration = sim800l.read()
@@ -381,7 +428,7 @@ def init_sim800l():
     # ------------------------------------------------
     # 5. SMS text mode
     # ------------------------------------------------
-    sim800l.write(b'AT+CMGF=1\r\n')
+    sim800l_write(b'AT+CMGF=1\r\n')
     time.sleep(1)
 
     sms_response = sim800l.read()
@@ -403,7 +450,7 @@ def send_sms(phone_number, message):
         sim800l.read()
         
         # Check if SIM is ready
-        sim800l.write(b'AT+CPAS\r\n')
+        sim800l_write(b'AT+CPAS\r\n')
         time.sleep(0.5)
         response = sim800l.read()
         print("SIM status:", response)
@@ -411,7 +458,7 @@ def send_sms(phone_number, message):
         # Set recipient number
         cmd = 'AT+CMGS="{}"\r\n'.format(phone_number)
         print("Sending command:", cmd)
-        sim800l.write(cmd.encode())
+        sim800l_write(cmd.encode())
         
         # Wait for ">" prompt (max 5 seconds)
         got_prompt = False
@@ -431,9 +478,13 @@ def send_sms(phone_number, message):
             return False
         
         # Send message
-        sim800l.write(message.encode())
-        sim800l.write(b'\x1A')  # Ctrl+Z to send
-        time.sleep(5)  # Wait for transmission
+        sim800l_write(message.encode())
+        sim800l_write(b'\x1A')  # Ctrl+Z to send
+        time.sleep(2)  # Wait for message to be sent
+        
+        # Clear buffer (discard message echo)
+        sim800l.read()
+        time.sleep(3)  # Wait for actual response
         
         # Read response
         response = sim800l.read()
@@ -537,18 +588,40 @@ def get_alert_level(water_level):
 # TIME SETUP
 # ============================================================
 
-def setup_time():
+def setup_time(max_attempts=NTP_MAX_ATTEMPTS, retry_delay=NTP_RETRY_DELAY):
+    """
+    Sync time via NTP, retrying on failure and verifying the result is
+    plausible before trusting it. The ESP32's RTC defaults to the year
+    2000 when it has never been synced, so a "successful" call that
+    still leaves the clock at year 2000 is treated as a failure here —
+    that mismatch is what caused SMS/readings to be stamped
+    '2000-01-01' instead of the real date.
+    """
+    global time_synced
 
-    try:
-        print("Updating time...")
-        
-        ntptime.host = "pool.ntp.org"
-        ntptime.settime()
+    ntptime.host = "pool.ntp.org"
 
-        print("Time synchronized")
+    for attempt in range(1, max_attempts + 1):
+        try:
+            print("Updating time... (attempt {}/{})".format(attempt, max_attempts))
+            ntptime.settime()
 
-    except Exception as e:
-        print("NTP error:", e)
+            if time.localtime()[0] >= MIN_PLAUSIBLE_YEAR:
+                print("Time synchronized")
+                time_synced = True
+                return True
+            else:
+                print("NTP call succeeded but clock still looks unset, retrying...")
+
+        except Exception as e:
+            print("NTP error (attempt {}/{}):".format(attempt, max_attempts), e)
+
+        time.sleep(retry_delay)
+
+    print("WARNING: time sync failed after {} attempts.".format(max_attempts))
+    print("Timestamps will be inaccurate until the next successful resync.")
+    time_synced = False
+    return False
 
 
 
@@ -742,7 +815,8 @@ print("\n=== FloodWatch ESP32 Water Level Sensor ===")
 
 wifi = connect_wifi()
 
-setup_time()
+time_synced = setup_time()
+last_time_sync_attempt = time.ticks_ms()
 
 
 # Initialize SIM800L if enabled
@@ -767,8 +841,14 @@ while True:
         wifi = connect_wifi()
 
 
-
     current_time = time.ticks_ms()
+
+
+    # If the boot-time sync never succeeded, keep retrying periodically
+    # instead of running the whole session on the bogus year-2000 clock.
+    if not time_synced and time.ticks_diff(current_time, last_time_sync_attempt) >= NTP_RESYNC_INTERVAL:
+        last_time_sync_attempt = current_time
+        time_synced = setup_time(max_attempts=1, retry_delay=1)
 
 
     # Read water level every 1 second
@@ -780,17 +860,25 @@ while True:
         >= READING_INTERVAL
     ):
 
-        last_reading_time = current_time
+        # Skip this reading if SIM800L transmitted recently — GSM TX
+        # bursts are a known noise source and readings taken during
+        # the settling window right after one are less trustworthy.
+        # last_reading_time is deliberately NOT updated in this case,
+        # so the next loop pass (100ms later) retries right away
+        # instead of waiting a full extra second.
+        if SMS_ENABLED and time.ticks_diff(current_time, last_sim800l_activity_ms) < SIM800L_QUIET_MS:
+            print("Skipping reading — SIM800L active recently")
+        else:
+            last_reading_time = current_time
 
+            level = read_water_level()
 
-        level = read_water_level()
-        
-        # Add to buffer for averaging
-        readings_buffer.append(level)
-        
-        # Keep buffer size manageable
-        if len(readings_buffer) > 100:
-            readings_buffer.pop(0)
+            # Add to buffer for averaging
+            readings_buffer.append(level)
+
+            # Keep buffer size manageable
+            if len(readings_buffer) > 100:
+                readings_buffer.pop(0)
 
 
     # Send average every 30 seconds
@@ -821,15 +909,32 @@ while True:
                 # Fallback to mean if all readings were filtered
                 avg_level = round(mean_level, 1)
                 print("Mean of {} readings: {} cm".format(len(readings_buffer), avg_level))
-            
-            send_sensor_data(avg_level)
+
+            # Smooth across sends (EMA) so one noisy 30s block doesn't
+            # look like a sudden level change on its own. The first
+            # send has no prior value to blend with, so it passes
+            # through unchanged.
+            if SMOOTHING_ENABLED:
+                if smoothed_level is None:
+                    smoothed_level = avg_level
+                else:
+                    smoothed_level = round(
+                        SMOOTHING_ALPHA * avg_level + (1 - SMOOTHING_ALPHA) * smoothed_level, 1
+                    )
+                if smoothed_level != avg_level:
+                    print("Raw median: {} cm | Smoothed: {} cm".format(avg_level, smoothed_level))
+                send_level = smoothed_level
+            else:
+                send_level = avg_level
+
+            send_sensor_data(send_level)
             
             # Check alert level and send SMS if needed
-            current_alert = get_alert_level(avg_level)
+            current_alert = get_alert_level(send_level)
             
             # Send SMS only when alert level changes
             if current_alert != last_alert_level and current_alert != 'safe':
-                send_alert_sms(avg_level, current_alert)
+                send_alert_sms(send_level, current_alert)
                 last_alert_level = current_alert
             elif current_alert == 'safe' and last_alert_level != 'safe':
                 # Reset when back to safe
